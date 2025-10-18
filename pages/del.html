@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>签派管制 - ATC系统</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="atc-container">
+        <div class="header">
+            <div class="header-info">
+                <h2>模拟空中交通管制系统</h2>
+                <div id="controlBadge" class="control-badge del-badge">签派管制 (DEL)</div>
+                <div class="time-display" id="currentTime">00:00:00</div>
+            </div>
+            <button id="logoutBtn" class="logout-btn">退出系统</button>
+        </div>
+
+        <div class="main-content">
+            <div class="management-panel">
+                <h3 id="managementTitle" class="panel-title del-title">签派管制航班</h3>
+                <div id="managedFlights" class="flight-list">
+                    <!-- 动态生成受管航班 -->
+                </div>
+            </div>
+
+            <div class="global-view">
+                <h3 class="panel-title">所有航班信息</h3>
+                <table class="flights-table">
+                    <thead>
+                        <tr>
+                            <th>呼号</th>
+                            <th>状态</th>
+                            <th>当前管制</th>
+                            <th>位置</th>
+                            <th>出发地</th>
+                            <th>目的地</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allFlightsTable">
+                        <!-- 动态生成所有航班 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            common.initPage();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+:root {
+    --del-color: #3498db;
+    --gnd-color: #2ecc71;
+    --twr-color: #e74c3c;
+    --app-color: #9b59b6;
+    --cen-color: #f39c12;
+    --bg-dark: #1a1a2e;
+    --bg-card: #16213e;
+    --text-light: #e6e6e6;
+    --text-muted: #8a8a8a;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+input, select {
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #2d3748;
+    color: var(--text-light);
+    width: 100%;
+}
+
+/* 主系统样式 */
+.atc-container {
+    min-height: 100vh;
+}
+
+.header {
+    background-color: var(--bg-card);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.control-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+}
+
+.del-badge { background-color: var(--del-color); }
+.gnd-badge { background-color: var(--gnd-color); }
+.twr-badge { background-color: var(--twr-color); }
+.app-badge { background-color: var(--app-color); }
+.cen-badge { background-color: var(--cen-color); }
+
+.time-display {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.logout-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.main-content {
+    display: flex;
+    height: calc(100vh - 70px);
+}
+
+.management-panel {
+    width: 35%;
+    background-color: var(--bg-card);
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 1px solid #2d3748;
+}
+
+.global-view {
+    width: 65%;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.panel-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid;
+}
+
+.del-title { border-color: var(--del-color); }
+.gnd-title { border-color: var(--gnd-color); }
+.twr-title { border-color: var(--twr-color); }
+.app-title { border-color: var(--app-color); }
+.cen-title { border-color: var(--cen-color); }
+
+.flight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.flight-card {
+    background-color: #2d3748;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 4px solid;
+}
+
+.del-flight { border-color: var(--del-color); }
+.gnd-flight { border-color: var(--gnd-color); }
+.twr-flight { border-color: var(--twr-color); }
+.app-flight { border-color: var(--app-color); }
+.cen-flight { border-color: var(--cen-color); }
+
+.flight-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.callsign {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.flight-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+.status-scheduled { background-color: #7f8c8d; }
+.status-boarding { background-color: #3498db; }
+.status-taxiing { background-color: #f39c12; }
+.status-ready { background-color: #2ecc71; }
+.status-departed { background-color: #9b59b6; }
+.status-cruising { background-color: #1abc9c; }
+
+.flight-details {
+    margin-bottom: 15px;
+}
+
+.flight-route {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.flight-position {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.flight-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 8px;
+    font-size: 12px;
+    color: white;
+}
+
+.del-btn { background-color: var(--del-color); }
+.gnd-btn { background-color: var(--gnd-color); }
+.twr-btn { background-color: var(--twr-color); }
+.app-btn { background-color: var(--app-color); }
+.cen-btn { background-color: var(--cen-color); }
+
+.flights-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.flights-table th, .flights-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #2d3748;
+}
+
+.flights-table th {
+    background-color: #2d3748;
+    font-weight: 600;
+}
+
+.flights-table tr:hover {
+    background-color: #2d3748;
+}
+
+.control-badge-small {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+.no-flights {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
