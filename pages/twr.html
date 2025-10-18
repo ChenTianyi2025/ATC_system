@@ -5,13 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>塔台管制 - ATC系统</title>
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* 塔台管制特定样式 */
+        .twr-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .action-btn-small {
+            padding: 6px 10px;
+            font-size: 11px;
+            flex: 1;
+        }
+        
+        .takeoff-btn {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .lineup-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .hold-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .goaround-btn {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        .landing-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .flight-remarks {
+            margin-top: 8px;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .flight-altitude {
+            margin-top: 5px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .runway-info {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 2px 6px;
+            background-color: rgba(231, 76, 60, 0.2);
+            border-radius: 3px;
+            font-size: 11px;
+            color: #e74c3c;
+        }
+        
+        .arrival-flight {
+            border-left: 4px solid #3498db !important;
+        }
+        
+        .departure-flight {
+            border-left: 4px solid #e74c3c !important;
+        }
+    </style>
 </head>
 <body>
     <div class="atc-container">
         <div class="header">
             <div class="header-info">
                 <h2>模拟空中交通管制系统</h2>
-                <div id="controlBadge" class="control-badge twr-badge">塔台管制 (DEL)</div>
+                <div id="controlBadge" class="control-badge twr-badge">塔台管制 (TWR)</div>
                 <div class="time-display" id="currentTime">00:00:00</div>
             </div>
             <button id="logoutBtn" class="logout-btn">退出系统</button>
@@ -36,6 +108,7 @@
                             <th>位置</th>
                             <th>出发地</th>
                             <th>目的地</th>
+                            <th>备注</th>
                         </tr>
                     </thead>
                     <tbody id="allFlightsTable">
@@ -50,8 +123,286 @@
     <script src="../js/data.js"></script>
     <script src="../js/common.js"></script>
     <script>
+        // 扩展航班数据管理 - 塔台管制特定功能
+        const twrFlightData = {
+            ...flightData,
+            
+            // 塔台管制特定状态更新
+            updateFlightStatusForTwr(flightId, action) {
+                const flight = this.flights.find(f => f.id === flightId);
+                if (!flight) return null;
+                
+                switch(action) {
+                    case 'lineup':
+                        flight.status = 'lineup';
+                        flight.position = '跑道外等待';
+                        break;
+                    case 'takeoff':
+                        flight.status = 'takeoff';
+                        flight.position = '起飞中';
+                        flight.altitude = 1000;
+                        break;
+                    case 'hold':
+                        flight.status = 'holding';
+                        flight.position = '等待点';
+                        break;
+                    case 'landing':
+                        flight.status = 'landing';
+                        flight.position = '最终进近';
+                        flight.altitude = 500;
+                        break;
+                    case 'goaround':
+                        flight.status = 'goaround';
+                        flight.position = '复飞';
+                        flight.altitude = 1500;
+                        break;
+                }
+                
+                return flight;
+            },
+            
+            // 检查航班类型（到达/出发）
+            getFlightType(flight) {
+                // 简化的逻辑：如果当前位置包含跑道信息，可能是到达航班
+                if (flight.position.includes('跑道') || flight.status === 'landing' || flight.status === 'goaround') {
+                    return 'arrival';
+                }
+                return 'departure';
+            },
+            
+            getStatusText(status) {
+                const statusMap = {
+                    'scheduled': '计划中',
+                    'boarding': '登机中',
+                    'taxiing': '滑行中',
+                    'ready': '准备起飞',
+                    'lineup': '跑道外等待',
+                    'takeoff': '起飞中',
+                    'departed': '已起飞',
+                    'cruising': '巡航中',
+                    'landing': '着陆中',
+                    'goaround': '复飞',
+                    'holding': '等待中',
+                    'delayed': '延误',
+                    'cancelled': '取消'
+                };
+                return statusMap[status] || status;
+            }
+        };
+
+        // 塔台管制特定功能
+        const twrCommon = {
+            ...common,
+            
+            initPage() {
+                const user = auth.requireAuth();
+                if (!user) return;
+
+                // 更新界面元素
+                document.getElementById('controlBadge').textContent = `${user.name} (${user.type})`;
+                document.getElementById('controlBadge').className = `control-badge ${user.type.toLowerCase()}-badge`;
+                document.getElementById('managementTitle').textContent = `${user.name}航班`;
+                document.getElementById('managementTitle').className = `panel-title ${user.type.toLowerCase()}-title`;
+
+                // 初始化时间
+                this.initTime();
+
+                // 渲染航班数据
+                this.renderManagedFlights(user.type);
+                this.renderAllFlightsTable();
+
+                // 绑定退出按钮
+                document.getElementById('logoutBtn').addEventListener('click', auth.logout);
+            },
+            
+            renderManagedFlights(controlType) {
+                const managedFlights = document.getElementById('managedFlights');
+                const flights = twrFlightData.getFlightsByControl(controlType);
+                
+                managedFlights.innerHTML = '';
+                
+                if (flights.length === 0) {
+                    managedFlights.innerHTML = '<div class="no-flights">暂无受管航班</div>';
+                    return;
+                }
+                
+                flights.forEach(flight => {
+                    const flightType = twrFlightData.getFlightType(flight);
+                    const flightCard = document.createElement('div');
+                    flightCard.className = `flight-card ${controlType.toLowerCase()}-flight ${flightType}-flight`;
+                    
+                    // 根据航班类型和状态显示不同的操作按钮
+                    let actionButtons = '';
+                    if (flightType === 'departure') {
+                        // 出发航班操作
+                        if (flight.status === 'ready' || flight.status === 'taxiing') {
+                            actionButtons = `
+                                <div class="twr-actions">
+                                    <button class="action-btn-small lineup-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'lineup')">
+                                        进入跑道
+                                    </button>
+                                    <button class="action-btn-small hold-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'hold')">
+                                        等待指令
+                                    </button>
+                                </div>
+                            `;
+                        } else if (flight.status === 'lineup') {
+                            actionButtons = `
+                                <div class="twr-actions">
+                                    <button class="action-btn-small takeoff-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'takeoff')">
+                                        起飞许可
+                                    </button>
+                                    <button class="action-btn-small hold-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'hold')">
+                                        等待指令
+                                    </button>
+                                </div>
+                            `;
+                        } else if (flight.status === 'takeoff') {
+                            actionButtons = `
+                                <div class="flight-actions">
+                                    <button class="action-btn app-btn" onclick="twrCommon.transferFlight('${flight.id}')">
+                                        移交 ${flight.nextControl}
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // 到达航班操作
+                        if (flight.status === 'landing') {
+                            actionButtons = `
+                                <div class="twr-actions">
+                                    <button class="action-btn-small landing-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'landing')">
+                                        着陆许可
+                                    </button>
+                                    <button class="action-btn-small goaround-btn" onclick="twrCommon.updateFlightStatus('${flight.id}', 'goaround')">
+                                        复飞指令
+                                    </button>
+                                </div>
+                            `;
+                        } else if (flight.status === 'goaround') {
+                            actionButtons = `
+                                <div class="flight-actions">
+                                    <button class="action-btn app-btn" onclick="twrCommon.transferFlight('${flight.id}')">
+                                        移交 ${flight.nextControl}
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    // 如果没有特定操作按钮，显示默认移交按钮
+                    if (!actionButtons && flight.nextControl && flight.nextControl !== 'TWR') {
+                        actionButtons = `
+                            <div class="flight-actions">
+                                <button class="action-btn ${flight.nextControl.toLowerCase()}-btn" onclick="twrCommon.transferFlight('${flight.id}')">
+                                    移交 ${flight.nextControl}
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    const flightTypeBadge = flightType === 'arrival' ? '<span class="runway-info">到达</span>' : '<span class="runway-info">出发</span>';
+                    
+                    flightCard.innerHTML = `
+                        <div class="flight-header">
+                            <div class="callsign">${flight.callsign}${flightTypeBadge}</div>
+                            <div class="flight-status status-${flight.status}">${twrFlightData.getStatusText(flight.status)}</div>
+                        </div>
+                        <div class="flight-details">
+                            <div class="flight-route">
+                                <span>🛫 ${flight.departure}</span>
+                                <span>→</span>
+                                <span>🛬 ${flight.destination}</span>
+                            </div>
+                            <div class="flight-position">📍 ${flight.position}</div>
+                            ${flight.altitude > 0 ? `<div class="flight-altitude">⏫ 高度: ${flight.altitude}ft</div>` : ''}
+                            ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
+                        </div>
+                        ${actionButtons}
+                    `;
+                    
+                    managedFlights.appendChild(flightCard);
+                });
+            },
+            
+            renderAllFlightsTable() {
+                const tableBody = document.getElementById('allFlightsTable');
+                const flights = twrFlightData.getFlights();
+                
+                tableBody.innerHTML = '';
+                
+                flights.forEach(flight => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${flight.callsign}</td>
+                        <td>${twrFlightData.getStatusText(flight.status)}</td>
+                        <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
+                        <td>${flight.position}</td>
+                        <td>${flight.departure}</td>
+                        <td>${flight.destination}</td>
+                        <td>${flight.remarks || '-'}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            },
+            
+            updateFlightStatus(flightId, action) {
+                const flight = twrFlightData.updateFlightStatusForTwr(flightId, action);
+                if (flight) {
+                    this.renderManagedFlights(auth.getCurrentUser().type);
+                    this.renderAllFlightsTable();
+                    
+                    let message = '';
+                    switch(action) {
+                        case 'lineup':
+                            message = `${flight.callsign} 已进入跑道外等待`;
+                            break;
+                        case 'takeoff':
+                            message = `已向 ${flight.callsign} 发放起飞许可`;
+                            flight.nextControl = 'APP';
+                            break;
+                        case 'hold':
+                            message = `${flight.callsign} 已收到等待指令`;
+                            break;
+                        case 'landing':
+                            message = `已向 ${flight.callsign} 发放着陆许可`;
+                            flight.nextControl = 'GND';
+                            break;
+                        case 'goaround':
+                            message = `${flight.callsign} 已执行复飞程序`;
+                            flight.nextControl = 'APP';
+                            break;
+                    }
+                    
+                    if (message) {
+                        alert(message);
+                    }
+                    
+                    // 如果是起飞或复飞，自动准备移交
+                    if (action === 'takeoff' || action === 'goaround') {
+                        setTimeout(() => {
+                            if (confirm(`是否将 ${flight.callsign} 移交给 ${flight.nextControl} 管制？`)) {
+                                this.transferFlight(flightId);
+                            }
+                        }, 1000);
+                    }
+                }
+            },
+            
+            transferFlight(flightId) {
+                const flight = twrFlightData.transferControl(flightId);
+                if (flight) {
+                    this.renderManagedFlights(auth.getCurrentUser().type);
+                    this.renderAllFlightsTable();
+                    alert(`已将 ${flight.callsign} 移交至 ${flight.nextControl} 管制`);
+                }
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
-            common.initPage();
+            twrCommon.initPage();
         });
     </script>
 </body>

@@ -5,6 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>签派管制 - ATC系统</title>
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* 添加航班对话框样式 */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dialog-content {
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        .dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--del-color);
+        }
+        
+        .dialog-title {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        
+        .dialog-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .cancel-btn {
+            background-color: #7f8c8d;
+            color: white;
+        }
+        
+        .add-flight-btn {
+            background-color: var(--del-color);
+            color: white;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="atc-container">
@@ -20,6 +105,7 @@
         <div class="main-content">
             <div class="management-panel">
                 <h3 id="managementTitle" class="panel-title del-title">签派管制航班</h3>
+                <button id="addFlightBtn" class="add-flight-btn">新添航班</button>
                 <div id="managedFlights" class="flight-list">
                     <!-- 动态生成受管航班 -->
                 </div>
@@ -36,6 +122,7 @@
                             <th>位置</th>
                             <th>出发地</th>
                             <th>目的地</th>
+                            <th>备注</th>
                         </tr>
                     </thead>
                     <tbody id="allFlightsTable">
@@ -46,12 +133,289 @@
         </div>
     </div>
 
+    <!-- 添加航班对话框 -->
+    <div id="addFlightDialog" class="dialog-overlay">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <div class="dialog-title">添加新航班</div>
+                <button class="close-btn" id="closeDialogBtn">&times;</button>
+            </div>
+            <form id="addFlightForm" class="dialog-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="callsign">航班号（呼号）</label>
+                        <input type="text" id="callsign" required placeholder="例如：CPA123">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="status">状态</label>
+                        <select id="status" required>
+                            <option value="scheduled">计划中</option>
+                            <option value="boarding">登机中</option>
+                            <option value="delayed">延误</option>
+                            <option value="cancelled">取消</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="position">位置</label>
+                        <input type="text" id="position" required placeholder="例如：Gate A1">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="departure">出发地</label>
+                        <input type="text" id="departure" required placeholder="例如：VHHH">
+                    </div>
+                    <div class="form-group">
+                        <label for="destination">目的地</label>
+                        <input type="text" id="destination" required placeholder="例如：ZBAA">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="remarks">备注</label>
+                    <textarea id="remarks" rows="3" placeholder="可输入航班备注信息"></textarea>
+                </div>
+                
+                <div class="dialog-actions">
+                    <button type="button" class="cancel-btn" id="cancelAddBtn">取消</button>
+                    <button type="submit" class="action-btn del-btn">添加航班</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../js/auth.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/common.js"></script>
     <script>
+        // 扩展航班数据管理
+        const extendedFlightData = {
+            ...flightData,
+            
+            addFlight(flightInfo) {
+                const newFlight = {
+                    id: Date.now().toString(),
+                    callsign: flightInfo.callsign,
+                    status: flightInfo.status,
+                    currentControl: "DEL",
+                    nextControl: "GND",
+                    position: flightInfo.position,
+                    altitude: 0,
+                    heading: 0,
+                    departure: flightInfo.departure,
+                    destination: flightInfo.destination,
+                    remarks: flightInfo.remarks || ""
+                };
+                
+                this.flights.push(newFlight);
+                return newFlight;
+            },
+            
+            getStatusText(status) {
+                const statusMap = {
+                    'scheduled': '计划中',
+                    'boarding': '登机中',
+                    'taxiing': '滑行中',
+                    'ready': '准备起飞',
+                    'departed': '已起飞',
+                    'cruising': '巡航中',
+                    'delayed': '延误',
+                    'cancelled': '取消'
+                };
+                return statusMap[status] || status;
+            }
+        };
+
+        // 扩展通用功能
+        const extendedCommon = {
+            ...common,
+            
+            initPage() {
+                const user = auth.requireAuth();
+                if (!user) return;
+
+                // 更新界面元素
+                document.getElementById('controlBadge').textContent = `${user.name} (${user.type})`;
+                document.getElementById('controlBadge').className = `control-badge ${user.type.toLowerCase()}-badge`;
+                document.getElementById('managementTitle').textContent = `${user.name}航班`;
+                document.getElementById('managementTitle').className = `panel-title ${user.type.toLowerCase()}-title`;
+
+                // 初始化时间
+                this.initTime();
+
+                // 渲染航班数据
+                this.renderManagedFlights(user.type);
+                this.renderAllFlightsTable();
+
+                // 绑定退出按钮
+                document.getElementById('logoutBtn').addEventListener('click', auth.logout);
+                
+                // 绑定添加航班按钮
+                document.getElementById('addFlightBtn').addEventListener('click', this.showAddFlightDialog.bind(this));
+                
+                // 绑定对话框事件
+                this.bindDialogEvents();
+            },
+            
+            showAddFlightDialog() {
+                document.getElementById('addFlightDialog').style.display = 'flex';
+            },
+            
+            hideAddFlightDialog() {
+                document.getElementById('addFlightDialog').style.display = 'none';
+                document.getElementById('addFlightForm').reset();
+            },
+            
+            bindDialogEvents() {
+                // 关闭对话框按钮
+                document.getElementById('closeDialogBtn').addEventListener('click', () => {
+                    this.hideAddFlightDialog();
+                });
+                
+                // 取消按钮
+                document.getElementById('cancelAddBtn').addEventListener('click', () => {
+                    this.hideAddFlightDialog();
+                });
+                
+                // 点击对话框外部关闭
+                document.getElementById('addFlightDialog').addEventListener('click', (e) => {
+                    if (e.target === document.getElementById('addFlightDialog')) {
+                        this.hideAddFlightDialog();
+                    }
+                });
+                
+                // 表单提交
+                document.getElementById('addFlightForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleAddFlight();
+                });
+            },
+            
+            handleAddFlight() {
+                const callsign = document.getElementById('callsign').value;
+                const status = document.getElementById('status').value;
+                const position = document.getElementById('position').value;
+                const departure = document.getElementById('departure').value;
+                const destination = document.getElementById('destination').value;
+                const remarks = document.getElementById('remarks').value;
+                
+                // 验证呼号格式
+                if (!this.validateCallsign(callsign)) {
+                    alert('航班呼号格式不正确，请使用3个字母+数字的组合（如CPA123）');
+                    return;
+                }
+                
+                // 检查呼号是否已存在
+                if (extendedFlightData.flights.some(flight => flight.callsign === callsign)) {
+                    alert('该航班呼号已存在，请使用其他呼号');
+                    return;
+                }
+                
+                // 添加新航班
+                const newFlight = extendedFlightData.addFlight({
+                    callsign,
+                    status,
+                    position,
+                    departure,
+                    destination,
+                    remarks
+                });
+                
+                // 更新界面
+                this.renderManagedFlights(auth.getCurrentUser().type);
+                this.renderAllFlightsTable();
+                
+                // 关闭对话框
+                this.hideAddFlightDialog();
+                
+                alert(`成功添加航班 ${callsign}`);
+            },
+            
+            validateCallsign(callsign) {
+                // 简单的呼号验证：3个字母+数字的组合
+                const callsignRegex = /^[A-Z]{2,3}\d{1,4}$/;
+                return callsignRegex.test(callsign);
+            },
+            
+            renderManagedFlights(controlType) {
+                const managedFlights = document.getElementById('managedFlights');
+                const flights = extendedFlightData.getFlightsByControl(controlType);
+                
+                managedFlights.innerHTML = '';
+                
+                if (flights.length === 0) {
+                    managedFlights.innerHTML = '<div class="no-flights">暂无受管航班</div>';
+                    return;
+                }
+                
+                flights.forEach(flight => {
+                    const flightCard = document.createElement('div');
+                    flightCard.className = `flight-card ${controlType.toLowerCase()}-flight`;
+                    
+                    flightCard.innerHTML = `
+                        <div class="flight-header">
+                            <div class="callsign">${flight.callsign}</div>
+                            <div class="flight-status status-${flight.status}">${extendedFlightData.getStatusText(flight.status)}</div>
+                        </div>
+                        <div class="flight-details">
+                            <div class="flight-route">
+                                <span>🛫 ${flight.departure}</span>
+                                <span>→</span>
+                                <span>🛬 ${flight.destination}</span>
+                            </div>
+                            <div class="flight-position">📍 ${flight.position}</div>
+                            ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
+                        </div>
+                        <div class="flight-actions">
+                            <button class="action-btn gnd-btn" onclick="extendedCommon.transferFlight('${flight.id}')">
+                                移交 ${flight.nextControl}
+                            </button>
+                        </div>
+                    `;
+                    
+                    managedFlights.appendChild(flightCard);
+                });
+            },
+            
+            renderAllFlightsTable() {
+                const tableBody = document.getElementById('allFlightsTable');
+                const flights = extendedFlightData.getFlights();
+                
+                tableBody.innerHTML = '';
+                
+                flights.forEach(flight => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${flight.callsign}</td>
+                        <td>${extendedFlightData.getStatusText(flight.status)}</td>
+                        <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
+                        <td>${flight.position}</td>
+                        <td>${flight.departure}</td>
+                        <td>${flight.destination}</td>
+                        <td>${flight.remarks || '-'}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            },
+            
+            transferFlight(flightId) {
+                const flight = extendedFlightData.transferControl(flightId);
+                if (flight) {
+                    this.renderManagedFlights(auth.getCurrentUser().type);
+                    this.renderAllFlightsTable();
+                    alert(`已将 ${flight.callsign} 移交至 ${flight.nextControl} 管制`);
+                }
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
-            common.initPage();
+            extendedCommon.initPage();
         });
     </script>
 </body>
