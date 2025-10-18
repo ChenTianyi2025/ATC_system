@@ -40,6 +40,7 @@ const common = {
                     </div>
                     <div class="flight-position">📍 ${flight.position}</div>
                     ${flight.altitude > 0 ? `<div class="flight-altitude">⏫ 高度: ${flight.altitude}ft</div>` : ''}
+                    ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
                 </div>
                 <div class="flight-actions">
                     <button class="action-btn ${flight.nextControl.toLowerCase()}-btn" onclick="common.transferFlight('${flight.id}')">
@@ -68,6 +69,7 @@ const common = {
                 <td>${flight.position}</td>
                 <td>${flight.departure}</td>
                 <td>${flight.destination}</td>
+                <td>${flight.remarks || '-'}</td>
             `;
             
             tableBody.appendChild(row);

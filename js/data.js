@@ -1,3 +1,4 @@
+// 航班数据管理
 const flightData = {
     flights: [
         {
@@ -10,7 +11,8 @@ const flightData = {
             altitude: 0,
             heading: 0,
             departure: "VHHH",
-            destination: "ZBAA"
+            destination: "ZBAA",
+            remarks: ""
         },
         {
             id: "2",
@@ -22,7 +24,8 @@ const flightData = {
             altitude: 0,
             heading: 0,
             departure: "VHHH",
-            destination: "RJTT"
+            destination: "RJTT",
+            remarks: ""
         },
         {
             id: "3",
@@ -34,7 +37,8 @@ const flightData = {
             altitude: 0,
             heading: 120,
             departure: "VHHH",
-            destination: "KSFO"
+            destination: "KSFO",
+            remarks: ""
         },
         {
             id: "4",
@@ -46,7 +50,8 @@ const flightData = {
             altitude: 0,
             heading: 70,
             departure: "VHHH",
-            destination: "WSSS"
+            destination: "WSSS",
+            remarks: ""
         },
         {
             id: "5",
@@ -58,7 +63,8 @@ const flightData = {
             altitude: 5000,
             heading: 45,
             departure: "VHHH",
-            destination: "LFPG"
+            destination: "LFPG",
+            remarks: ""
         },
         {
             id: "6",
@@ -70,7 +76,8 @@ const flightData = {
             altitude: 35000,
             heading: 320,
             departure: "VHHH",
-            destination: "EGLL"
+            destination: "EGLL",
+            remarks: ""
         }
     ],
 
@@ -119,15 +126,51 @@ const flightData = {
         }
     },
 
+    addFlight(flightInfo) {
+        const newFlight = {
+            id: Date.now().toString(),
+            callsign: flightInfo.callsign,
+            status: flightInfo.status,
+            currentControl: "DEL",
+            nextControl: "GND",
+            position: flightInfo.position,
+            altitude: 0,
+            heading: 0,
+            departure: flightInfo.departure,
+            destination: flightInfo.destination,
+            remarks: flightInfo.remarks || ""
+        };
+        
+        this.flights.push(newFlight);
+        return newFlight;
+    },
+
     getStatusText(status) {
         const statusMap = {
             'scheduled': '计划中',
             'boarding': '登机中',
             'taxiing': '滑行中',
             'ready': '准备起飞',
+            'lineup': '跑道外等待',
+            'takeoff': '起飞中',
             'departed': '已起飞',
-            'cruising': '巡航中'
+            'climbing': '爬升中',
+            'cruising': '巡航中',
+            'descending': '下降中',
+            'approach': '进近中',
+            'final': '五边进近',
+            'landing': '着陆中',
+            'vectoring': '雷达引导',
+            'holding': '等待中',
+            'goaround': '复飞',
+            'delayed': '延误',
+            'cancelled': '取消'
         };
         return statusMap[status] || status;
+    },
+
+    validateCallsign(callsign) {
+        const callsignRegex = /^[A-Z]{2,3}\d{1,4}$/;
+        return callsignRegex.test(callsign);
     }
 };

@@ -6,34 +6,6 @@
     <title>地面管制 - ATC系统</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        /* 地面管制特定样式 */
-        .gnd-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .action-btn-small {
-            padding: 6px 10px;
-            font-size: 11px;
-            flex: 1;
-        }
-        
-        .taxi-btn {
-            background-color: #f39c12;
-            color: white;
-        }
-        
-        .hold-btn {
-            background-color: #e74c3c;
-            color: white;
-        }
-        
-        .ready-btn {
-            background-color: #2ecc71;
-            color: white;
-        }
-        
         .flight-remarks {
             margin-top: 8px;
             padding: 5px;
@@ -64,9 +36,7 @@
         <div class="main-content">
             <div class="management-panel">
                 <h3 id="managementTitle" class="panel-title gnd-title">地面管制航班</h3>
-                <div id="managedFlights" class="flight-list">
-                    <!-- 动态生成受管航班 -->
-                </div>
+                <div id="managedFlights" class="flight-list"></div>
             </div>
 
             <div class="global-view">
@@ -83,9 +53,7 @@
                             <th>备注</th>
                         </tr>
                     </thead>
-                    <tbody id="allFlightsTable">
-                        <!-- 动态生成所有航班 -->
-                    </tbody>
+                    <tbody id="allFlightsTable"></tbody>
                 </table>
             </div>
         </div>
@@ -95,206 +63,8 @@
     <script src="../js/data.js"></script>
     <script src="../js/common.js"></script>
     <script>
-        // 扩展航班数据管理 - 地面管制特定功能
-        const gndFlightData = {
-            ...flightData,
-            
-            // 地面管制特定状态更新
-            updateFlightStatusForGnd(flightId, action) {
-                const flight = this.flights.find(f => f.id === flightId);
-                if (!flight) return null;
-                
-                switch(action) {
-                    case 'taxi':
-                        flight.status = 'taxiing';
-                        flight.position = '滑行中';
-                        break;
-                    case 'hold':
-                        flight.status = 'holding';
-                        flight.position = '等待点';
-                        break;
-                    case 'ready':
-                        flight.status = 'ready';
-                        flight.position = '跑道外等待';
-                        flight.nextControl = 'TWR';
-                        break;
-                }
-                
-                return flight;
-            },
-            
-            getStatusText(status) {
-                const statusMap = {
-                    'scheduled': '计划中',
-                    'boarding': '登机中',
-                    'taxiing': '滑行中',
-                    'ready': '准备起飞',
-                    'departed': '已起飞',
-                    'cruising': '巡航中',
-                    'delayed': '延误',
-                    'cancelled': '取消',
-                    'holding': '等待中'
-                };
-                return statusMap[status] || status;
-            }
-        };
-
-        // 地面管制特定功能
-        const gndCommon = {
-            ...common,
-            
-            initPage() {
-                const user = auth.requireAuth();
-                if (!user) return;
-
-                // 更新界面元素
-                document.getElementById('controlBadge').textContent = `${user.name} (${user.type})`;
-                document.getElementById('controlBadge').className = `control-badge ${user.type.toLowerCase()}-badge`;
-                document.getElementById('managementTitle').textContent = `${user.name}航班`;
-                document.getElementById('managementTitle').className = `panel-title ${user.type.toLowerCase()}-title`;
-
-                // 初始化时间
-                this.initTime();
-
-                // 渲染航班数据
-                this.renderManagedFlights(user.type);
-                this.renderAllFlightsTable();
-
-                // 绑定退出按钮
-                document.getElementById('logoutBtn').addEventListener('click', auth.logout);
-            },
-            
-            renderManagedFlights(controlType) {
-                const managedFlights = document.getElementById('managedFlights');
-                const flights = gndFlightData.getFlightsByControl(controlType);
-                
-                managedFlights.innerHTML = '';
-                
-                if (flights.length === 0) {
-                    managedFlights.innerHTML = '<div class="no-flights">暂无受管航班</div>';
-                    return;
-                }
-                
-                flights.forEach(flight => {
-                    const flightCard = document.createElement('div');
-                    flightCard.className = `flight-card ${controlType.toLowerCase()}-flight`;
-                    
-                    // 根据航班状态显示不同的操作按钮
-                    let actionButtons = '';
-                    if (flight.status === 'boarding' || flight.status === 'scheduled') {
-                        actionButtons = `
-                            <div class="gnd-actions">
-                                <button class="action-btn-small taxi-btn" onclick="gndCommon.updateFlightStatus('${flight.id}', 'taxi')">
-                                    滑行许可
-                                </button>
-                                <button class="action-btn-small hold-btn" onclick="gndCommon.updateFlightStatus('${flight.id}', 'hold')">
-                                    等待指令
-                                </button>
-                            </div>
-                        `;
-                    } else if (flight.status === 'taxiing' || flight.status === 'holding') {
-                        actionButtons = `
-                            <div class="gnd-actions">
-                                <button class="action-btn-small ready-btn" onclick="gndCommon.updateFlightStatus('${flight.id}', 'ready')">
-                                    准备移交
-                                </button>
-                                <button class="action-btn-small hold-btn" onclick="gndCommon.updateFlightStatus('${flight.id}', 'hold')">
-                                    等待指令
-                                </button>
-                            </div>
-                        `;
-                    } else if (flight.status === 'ready') {
-                        actionButtons = `
-                            <div class="flight-actions">
-                                <button class="action-btn twr-btn" onclick="gndCommon.transferFlight('${flight.id}')">
-                                    移交 ${flight.nextControl}
-                                </button>
-                            </div>
-                        `;
-                    }
-                    
-                    flightCard.innerHTML = `
-                        <div class="flight-header">
-                            <div class="callsign">${flight.callsign}</div>
-                            <div class="flight-status status-${flight.status}">${gndFlightData.getStatusText(flight.status)}</div>
-                        </div>
-                        <div class="flight-details">
-                            <div class="flight-route">
-                                <span>🛫 ${flight.departure}</span>
-                                <span>→</span>
-                                <span>🛬 ${flight.destination}</span>
-                            </div>
-                            <div class="flight-position">📍 ${flight.position}</div>
-                            ${flight.altitude > 0 ? `<div class="flight-altitude">⏫ 高度: ${flight.altitude}ft</div>` : ''}
-                            ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
-                        </div>
-                        ${actionButtons}
-                    `;
-                    
-                    managedFlights.appendChild(flightCard);
-                });
-            },
-            
-            renderAllFlightsTable() {
-                const tableBody = document.getElementById('allFlightsTable');
-                const flights = gndFlightData.getFlights();
-                
-                tableBody.innerHTML = '';
-                
-                flights.forEach(flight => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${flight.callsign}</td>
-                        <td>${gndFlightData.getStatusText(flight.status)}</td>
-                        <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
-                        <td>${flight.position}</td>
-                        <td>${flight.departure}</td>
-                        <td>${flight.destination}</td>
-                        <td>${flight.remarks || '-'}</td>
-                    `;
-                    
-                    tableBody.appendChild(row);
-                });
-            },
-            
-            updateFlightStatus(flightId, action) {
-                const flight = gndFlightData.updateFlightStatusForGnd(flightId, action);
-                if (flight) {
-                    this.renderManagedFlights(auth.getCurrentUser().type);
-                    this.renderAllFlightsTable();
-                    
-                    let message = '';
-                    switch(action) {
-                        case 'taxi':
-                            message = `已向 ${flight.callsign} 发放滑行许可`;
-                            break;
-                        case 'hold':
-                            message = `${flight.callsign} 已收到等待指令`;
-                            break;
-                        case 'ready':
-                            message = `${flight.callsign} 已准备好移交塔台管制`;
-                            break;
-                    }
-                    
-                    if (message) {
-                        alert(message);
-                    }
-                }
-            },
-            
-            transferFlight(flightId) {
-                const flight = gndFlightData.transferControl(flightId);
-                if (flight) {
-                    this.renderManagedFlights(auth.getCurrentUser().type);
-                    this.renderAllFlightsTable();
-                    alert(`已将 ${flight.callsign} 移交至 ${flight.nextControl} 管制`);
-                }
-            }
-        };
-
         document.addEventListener('DOMContentLoaded', function() {
-            gndCommon.initPage();
+            common.initPage();
         });
     </script>
 </body>

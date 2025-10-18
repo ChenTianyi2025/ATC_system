@@ -6,7 +6,6 @@
     <title>区域管制 - ATC系统</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        /* 区域管制特定样式 */
         .flight-remarks {
             margin-top: 8px;
             padding: 5px;
@@ -47,9 +46,7 @@
         <div class="main-content">
             <div class="management-panel">
                 <h3 id="managementTitle" class="panel-title cen-title">区域管制航班</h3>
-                <div id="managedFlights" class="flight-list">
-                    <!-- 动态生成受管航班 -->
-                </div>
+                <div id="managedFlights" class="flight-list"></div>
             </div>
 
             <div class="global-view">
@@ -66,9 +63,7 @@
                             <th>备注</th>
                         </tr>
                     </thead>
-                    <tbody id="allFlightsTable">
-                        <!-- 动态生成所有航班 -->
-                    </tbody>
+                    <tbody id="allFlightsTable"></tbody>
                 </table>
             </div>
         </div>
@@ -78,135 +73,30 @@
     <script src="../js/data.js"></script>
     <script src="../js/common.js"></script>
     <script>
-        // 扩展航班数据管理 - 区域管制功能
-        const cenFlightData = {
-            ...flightData,
-            
-            getStatusText(status) {
-                const statusMap = {
-                    'scheduled': '计划中',
-                    'boarding': '登机中',
-                    'taxiing': '滑行中',
-                    'ready': '准备起飞',
-                    'takeoff': '起飞中',
-                    'departed': '已起飞',
-                    'climbing': '爬升中',
-                    'cruising': '巡航中',
-                    'descending': '下降中',
-                    'approach': '进近中',
-                    'final': '五边进近',
-                    'landing': '着陆中',
-                    'vectoring': '雷达引导',
-                    'holding': '等待航线',
-                    'goaround': '复飞',
-                    'delayed': '延误',
-                    'cancelled': '取消'
-                };
-                return statusMap[status] || status;
-            }
-        };
-
-        // 区域管制功能
-        const cenCommon = {
-            ...common,
-            
-            initPage() {
-                const user = auth.requireAuth();
-                if (!user) return;
-
-                // 更新界面元素
-                document.getElementById('controlBadge').textContent = `${user.name} (${user.type})`;
-                document.getElementById('controlBadge').className = `control-badge ${user.type.toLowerCase()}-badge`;
-                document.getElementById('managementTitle').textContent = `${user.name}航班`;
-                document.getElementById('managementTitle').className = `panel-title ${user.type.toLowerCase()}-title`;
-
-                // 初始化时间
-                this.initTime();
-
-                // 渲染航班数据
-                this.renderManagedFlights(user.type);
-                this.renderAllFlightsTable();
-
-                // 绑定退出按钮
-                document.getElementById('logoutBtn').addEventListener('click', auth.logout);
-            },
-            
-            renderManagedFlights(controlType) {
-                const managedFlights = document.getElementById('managedFlights');
-                const flights = cenFlightData.getFlightsByControl(controlType);
-                
-                managedFlights.innerHTML = '';
-                
-                if (flights.length === 0) {
-                    managedFlights.innerHTML = '<div class="no-flights">暂无受管航班</div>';
-                    return;
-                }
-                
-                flights.forEach(flight => {
-                    const flightCard = document.createElement('div');
-                    flightCard.className = `flight-card ${controlType.toLowerCase()}-flight`;
-                    
-                    flightCard.innerHTML = `
-                        <div class="flight-header">
-                            <div class="callsign">${flight.callsign}<span class="cruising-info">巡航</span></div>
-                            <div class="flight-status status-${flight.status}">${cenFlightData.getStatusText(flight.status)}</div>
-                        </div>
-                        <div class="flight-details">
-                            <div class="flight-route">
-                                <span>🛫 ${flight.departure}</span>
-                                <span>→</span>
-                                <span>🛬 ${flight.destination}</span>
-                            </div>
-                            <div class="flight-position">📍 ${flight.position}</div>
-                            ${flight.altitude > 0 ? `<div class="flight-altitude">⏫ 高度: ${flight.altitude}ft</div>` : ''}
-                            ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
-                        </div>
-                        <div class="flight-actions">
-                            <button class="action-btn ${flight.nextControl.toLowerCase()}-btn" onclick="cenCommon.transferFlight('${flight.id}')">
-                                移交 ${flight.nextControl}
-                            </button>
-                        </div>
-                    `;
-                    
-                    managedFlights.appendChild(flightCard);
-                });
-            },
-            
-            renderAllFlightsTable() {
-                const tableBody = document.getElementById('allFlightsTable');
-                const flights = cenFlightData.getFlights();
-                
-                tableBody.innerHTML = '';
-                
-                flights.forEach(flight => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${flight.callsign}</td>
-                        <td>${cenFlightData.getStatusText(flight.status)}</td>
-                        <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
-                        <td>${flight.position}</td>
-                        <td>${flight.departure}</td>
-                        <td>${flight.destination}</td>
-                        <td>${flight.remarks || '-'}</td>
-                    `;
-                    
-                    tableBody.appendChild(row);
-                });
-            },
-            
-            transferFlight(flightId) {
-                const flight = cenFlightData.transferControl(flightId);
-                if (flight) {
-                    this.renderManagedFlights(auth.getCurrentUser().type);
-                    this.renderAllFlightsTable();
-                    alert(`已将 ${flight.callsign} 移交至 ${flight.nextControl} 管制`);
-                }
-            }
-        };
-
         document.addEventListener('DOMContentLoaded', function() {
-            cenCommon.initPage();
+            common.initPage();
+            
+            // 为区域管制页面添加巡航标识
+            const managedFlights = document.getElementById('managedFlights');
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        // 为每个航班卡片添加巡航标识
+                        const flightCards = managedFlights.querySelectorAll('.flight-card');
+                        flightCards.forEach(card => {
+                            const callsignElement = card.querySelector('.callsign');
+                            if (callsignElement && !callsignElement.querySelector('.cruising-info')) {
+                                const cruisingSpan = document.createElement('span');
+                                cruisingSpan.className = 'cruising-info';
+                                cruisingSpan.textContent = '巡航';
+                                callsignElement.appendChild(cruisingSpan);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(managedFlights, { childList: true, subtree: true });
         });
     </script>
 </body>
