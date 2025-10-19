@@ -50,86 +50,7 @@ console.log('✅ 认证模块加载完成');
 // ==================== 数据模块 ====================
 console.log('📊 加载数据模块...');
 const flightData = {
-    flights: [
-        {
-            id: "1",
-            callsign: "CPA123",
-            status: "scheduled",
-            currentControl: "DEL",
-            nextControl: "GND",
-            position: "Gate A1",
-            altitude: 0,
-            heading: 0,
-            departure: "VHHH",
-            destination: "ZBAA",
-            remarks: ""
-        },
-        {
-            id: "2",
-            callsign: "CES456",
-            status: "boarding",
-            currentControl: "DEL",
-            nextControl: "GND",
-            position: "Gate B2",
-            altitude: 0,
-            heading: 0,
-            departure: "VHHH",
-            destination: "RJTT",
-            remarks: ""
-        },
-        {
-            id: "3",
-            callsign: "UAL789",
-            status: "taxiing",
-            currentControl: "GND",
-            nextControl: "TWR",
-            position: "Taxiway A",
-            altitude: 0,
-            heading: 120,
-            departure: "VHHH",
-            destination: "KSFO",
-            remarks: ""
-        },
-        {
-            id: "4",
-            callsign: "SIA890",
-            status: "ready",
-            currentControl: "TWR",
-            nextControl: "APP",
-            position: "Runway 07R",
-            altitude: 0,
-            heading: 70,
-            departure: "VHHH",
-            destination: "WSSS",
-            remarks: ""
-        },
-        {
-            id: "5",
-            callsign: "AFR234",
-            status: "departed",
-            currentControl: "APP",
-            nextControl: "CEN",
-            position: "10NM NE",
-            altitude: 5000,
-            heading: 45,
-            departure: "VHHH",
-            destination: "LFPG",
-            remarks: ""
-        },
-        {
-            id: "6",
-            callsign: "BAW567",
-            status: "cruising",
-            currentControl: "CEN",
-            nextControl: "CEN",
-            position: "150NM SW",
-            altitude: 35000,
-            heading: 320,
-            departure: "VHHH",
-            destination: "EGLL",
-            remarks: ""
-        }
-    ],
+    flights: [], // 初始为空，从服务器加载
 
     getFlights() {
         return this.flights;
@@ -371,8 +292,8 @@ const common = {
                     ${flight.remarks ? `<div class="flight-remarks">📝 ${flight.remarks}</div>` : ''}
                 </div>
                 <div class="flight-actions">
-                    <button class="action-btn ${flight.nextControl.toLowerCase()}-btn" onclick="common.transferFlight('${flight.id}')">
-                        移交 ${flight.nextControl}
+                    <button class="action-btn transfer-btn" onclick="common.showTransferDialog('${flight.id}')">
+                        移交至
                     </button>
                 </div>
             `;
@@ -410,21 +331,21 @@ const common = {
         const flight = flightData.flights.find(f => f.id === flightId);
         if (!flight) return;
 
-        if (socketClient.transferFlight(
-            flightId,
-            flight.currentControl,
-            flight.nextControl,
-            'taxiing',
-            '移交中'
-        )) {
-            alert(`正在将 ${flight.callsign} 移交至 ${flight.nextControl} 管制...`);
-        } else {
-            const updatedFlight = flightData.transferControl(flightId);
-            if (updatedFlight) {
-                this.renderManagedFlights(auth.getCurrentUser().type);
-                this.renderAllFlightsTable();
-                alert(`已将 ${updatedFlight.callsign} 移交至 ${updatedFlight.nextControl} 管制`);
-            }
+        // 直接执行移交，不显示"正在移交"的提示
+        const updatedFlight = flightData.transferControl(flightId);
+        if (updatedFlight) {
+            // 通过WebSocket通知服务器
+            socketClient.transferFlight(
+                flightId,
+                flight.currentControl,
+                flight.nextControl,
+                updatedFlight.status,
+                updatedFlight.position
+            );
+            
+            // 立即更新本地界面
+            this.renderManagedFlights(auth.getCurrentUser().type);
+            this.renderAllFlightsTable();
         }
     },
 
@@ -536,6 +457,175 @@ const common = {
             alert(`成功添加航班 ${callsign}`);
         } else {
             alert('网络连接异常');
+        }
+    },
+
+    // 显示移交对话框
+    showTransferDialog(flightId) {
+        const flight = flightData.flights.find(f => f.id === flightId);
+        if (!flight) return;
+
+        const currentUser = auth.getCurrentUser();
+        if (!currentUser) return;
+
+        // 创建移交对话框
+        const dialog = document.createElement('div');
+        dialog.className = 'dialog-overlay';
+        dialog.id = 'transferDialog';
+        dialog.innerHTML = `
+            <div class="dialog-content">
+                <div class="dialog-header">
+                    <div class="dialog-title">移交航班 ${flight.callsign}</div>
+                    <button class="close-btn" onclick="common.hideTransferDialog()">&times;</button>
+                </div>
+                <div class="dialog-body">
+                    <p>请选择要移交到的管制单位：</p>
+                    <div class="transfer-options">
+                        ${this.getTransferOptions(currentUser.type, flight)}
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button class="cancel-btn" onclick="common.hideTransferDialog()">取消</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+        dialog.style.display = 'flex';
+    },
+
+    // 获取移交选项
+    getTransferOptions(currentControl, flight) {
+        const controlTypes = {
+            'DEL': { name: '签派', next: 'GND' },
+            'GND': { name: '地面', next: 'TWR' },
+            'TWR': { name: '塔台', next: 'APP' },
+            'APP': { name: '进近', next: 'CEN' },
+            'CEN': { name: '区域', next: 'CEN' }
+        };
+
+        let options = '';
+        
+        // 根据当前管制类型提供合理的移交选项
+        switch(currentControl) {
+            case 'DEL':
+                options = `
+                    <button class="transfer-option-btn gnd-btn" onclick="common.executeTransfer('${flight.id}', 'GND')">
+                        地面管制 (GND)
+                    </button>
+                `;
+                break;
+            case 'GND':
+                options = `
+                    <button class="transfer-option-btn twr-btn" onclick="common.executeTransfer('${flight.id}', 'TWR')">
+                        塔台管制 (TWR)
+                    </button>
+                    <button class="transfer-option-btn del-btn" onclick="common.executeTransfer('${flight.id}', 'DEL')">
+                        返回签派 (DEL)
+                    </button>
+                `;
+                break;
+            case 'TWR':
+                options = `
+                    <button class="transfer-option-btn app-btn" onclick="common.executeTransfer('${flight.id}', 'APP')">
+                        进近管制 (APP)
+                    </button>
+                    <button class="transfer-option-btn gnd-btn" onclick="common.executeTransfer('${flight.id}', 'GND')">
+                        返回地面 (GND)
+                    </button>
+                `;
+                break;
+            case 'APP':
+                options = `
+                    <button class="transfer-option-btn cen-btn" onclick="common.executeTransfer('${flight.id}', 'CEN')">
+                        区域管制 (CEN)
+                    </button>
+                    <button class="transfer-option-btn twr-btn" onclick="common.executeTransfer('${flight.id}', 'TWR')">
+                        返回塔台 (TWR)
+                    </button>
+                `;
+                break;
+            case 'CEN':
+                options = `
+                    <button class="transfer-option-btn app-btn" onclick="common.executeTransfer('${flight.id}', 'APP')">
+                        返回进近 (APP)
+                    </button>
+                `;
+                break;
+        }
+
+        return options;
+    },
+
+    // 执行移交
+    executeTransfer(flightId, toControl) {
+        const flight = flightData.flights.find(f => f.id === flightId);
+        if (!flight) return;
+
+        const fromControl = flight.currentControl;
+        
+        // 更新航班状态
+        flight.currentControl = toControl;
+        this.updateFlightStatusForTransfer(flight, toControl);
+
+        // 通过WebSocket通知服务器
+        socketClient.transferFlight(
+            flightId,
+            fromControl,
+            toControl,
+            flight.status,
+            flight.position
+        );
+
+        // 更新本地界面
+        this.renderManagedFlights(auth.getCurrentUser().type);
+        this.renderAllFlightsTable();
+
+        // 隐藏对话框
+        this.hideTransferDialog();
+    },
+
+    // 根据移交目标更新航班状态
+    updateFlightStatusForTransfer(flight, toControl) {
+        switch(toControl) {
+            case 'DEL':
+                flight.status = 'scheduled';
+                flight.position = '登机口';
+                flight.nextControl = 'GND';
+                flight.altitude = 0;
+                break;
+            case 'GND':
+                flight.status = 'taxiing';
+                flight.position = '滑行道';
+                flight.nextControl = 'TWR';
+                flight.altitude = 0;
+                break;
+            case 'TWR':
+                flight.status = 'ready';
+                flight.position = '跑道等待点';
+                flight.nextControl = 'APP';
+                flight.altitude = 0;
+                break;
+            case 'APP':
+                flight.status = 'departed';
+                flight.position = '离场区域';
+                flight.altitude = 5000;
+                flight.nextControl = 'CEN';
+                break;
+            case 'CEN':
+                flight.status = 'cruising';
+                flight.position = '航路';
+                flight.altitude = 35000;
+                flight.nextControl = 'CEN';
+                break;
+        }
+    },
+
+    // 隐藏移交对话框
+    hideTransferDialog() {
+        const dialog = document.getElementById('transferDialog');
+        if (dialog) {
+            dialog.remove();
         }
     }
 };

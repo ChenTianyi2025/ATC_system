@@ -5,33 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>区域管制 - ATC系统</title>
     <link rel="stylesheet" href="../css/style.css">
-    
-    <style>
-        .flight-remarks {
-            margin-top: 8px;
-            padding: 5px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-        
-        .flight-altitude {
-            margin-top: 5px;
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-        
-        .cruising-info {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 2px 6px;
-            background-color: rgba(243, 156, 18, 0.2);
-            border-radius: 3px;
-            font-size: 11px;
-            color: #f39c12;
-        }
-    </style>
 </head>
 <body>
     <div class="atc-container">
@@ -69,40 +42,8 @@
             </div>
         </div>
     </div>
-        <!-- 脚本加载 -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="../js/auth.js"></script>
-    <script src="../js/data.js"></script>
-    <script src="../js/socket-client.js"></script>
-    <script src="../js/common.js"></script>
-    <script src="../js/init.js"></script>  <!-- 新增统一的初始化文件 -->
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            common.initPage();
-            
-            // 为区域管制页面添加巡航标识
-            const managedFlights = document.getElementById('managedFlights');
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList') {
-                        // 为每个航班卡片添加巡航标识
-                        const flightCards = managedFlights.querySelectorAll('.flight-card');
-                        flightCards.forEach(card => {
-                            const callsignElement = card.querySelector('.callsign');
-                            if (callsignElement && !callsignElement.querySelector('.cruising-info')) {
-                                const cruisingSpan = document.createElement('span');
-                                cruisingSpan.className = 'cruising-info';
-                                cruisingSpan.textContent = '巡航';
-                                callsignElement.appendChild(cruisingSpan);
-                            }
-                        });
-                    }
-                });
-            });
-            
-            observer.observe(managedFlights, { childList: true, subtree: true });
-        });
-    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>

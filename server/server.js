@@ -27,29 +27,16 @@ console.log('客户端文件路径:', clientPath);
 // 提供静态文件服务
 app.use(express.static(clientPath));
 
-// 在静态文件配置后添加特别的路由
-app.use('/js/:filename', (req, res) => {
-    const filename = req.params.filename;
-    const filePath = path.join(clientPath, 'js', filename);
-    console.log('📁 请求JS文件:', filename);
-    
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        console.error('❌ JS文件未找到:', filePath);
-        res.status(404).send('File not found');
-    }
-});
-
 // 特别为JS文件设置路由
 app.use('/js/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(clientPath, 'js', filename);
-  console.log('请求JS文件:', filename, '路径:', filePath);
+  console.log('📁 请求JS文件:', filename, '路径:', filePath);
   
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
+    console.error('❌ JS文件未找到:', filePath);
     res.status(404).send('File not found');
   }
 });
