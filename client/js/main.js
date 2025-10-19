@@ -435,7 +435,7 @@ const common = {
         }
 
         // CON页面特定初始化
-        if (window.location.pathname.includes('con.html')) {
+        if (window.location.pathname.includes('con_.html')) {
             this.initConPage();
         }
     },
@@ -808,7 +808,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const password = document.getElementById('password').value;
                 
                 if (auth.login(controlType, password)) {
-                    window.location.href = `/pages/${controlType.toLowerCase()}.html`;
+                    // CON页面特殊处理，跳转到con_.html
+                    if (controlType === 'CON') {
+                        window.location.href = '/pages/con_.html';
+                    } else {
+                        window.location.href = `/pages/${controlType.toLowerCase()}.html`;
+                    }
                 } else {
                     alert('密码错误');
                     document.getElementById('password').value = '';

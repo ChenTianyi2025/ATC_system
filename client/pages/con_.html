@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>航班管理 - ATC系统</title>
+    <link rel="stylesheet" href="../css/style.css">
+    
+    <style>
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .flight-card {
+            position: relative;
+        }
+        
+        .flight-delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .flight-delete-btn:hover {
+            background-color: #c0392b;
+            transform: scale(1.05);
+        }
+        
+        .management-panel {
+            width: 40%;
+        }
+        
+        .global-view {
+            width: 60%;
+        }
+    </style>
+</head>
+<body>
+    <div class="atc-container">
+        <div class="header">
+            <div class="header-info">
+                <h2>模拟空中交通管制系统</h2>
+                <div id="controlBadge" class="control-badge con-badge">航班管理 (CON)</div>
+                <div class="time-display" id="currentTime">00:00:00</div>
+            </div>
+            <button id="logoutBtn" class="logout-btn">退出系统</button>
+        </div>
+
+        <div class="main-content con-fullscreen">
+            <div class="con-header">
+                <h3 class="panel-title con-title">航班管理</h3>
+                <button id="deleteSelectedBtn" class="delete-btn" style="display: none;">删除选中航班</button>
+            </div>
+            <div class="global-view con-full">
+                <table class="flights-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="selectAllCheckbox" onchange="common.toggleSelectAll()">
+                            </th>
+                            <th>呼号</th>
+                            <th>状态</th>
+                            <th>当前管制</th>
+                            <th>位置</th>
+                            <th>出发地</th>
+                            <th>目的地</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allFlightsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
