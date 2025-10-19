@@ -275,6 +275,24 @@ io.on('connection', (socket) => {
     console.log(`新航班 ${newFlight.callsign} 已添加`);
   });
 
+  // 删除航班
+  socket.on('flight_delete', (data) => {
+    console.log('删除航班:', data);
+    
+    const flights = loadFlights();
+    const index = flights.findIndex(f => f.id === data.flightId);
+    
+    if (index !== -1) {
+      const deletedFlight = flights[index];
+      flights.splice(index, 1);
+      saveFlights(flights);
+      
+      // 广播删除事件给所有客户端
+      io.emit('flight_deleted', { flightId: data.flightId, callsign: deletedFlight.callsign });
+      console.log(`航班 ${deletedFlight.callsign} 已删除`);
+    }
+  });
+
   // 断开连接处理
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);

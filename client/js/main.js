@@ -9,7 +9,8 @@ const auth = {
         "GND": { password: "gnd123", name: "地面管制" },
         "TWR": { password: "twr123", name: "塔台管制" },
         "APP": { password: "app123", name: "进近管制" },
-        "CEN": { password: "cen123", name: "区域管制" }
+        "CEN": { password: "cen123", name: "区域管制" },
+        "CON": { password: "con123", name: "航班管理" }
     },
 
     login(controlType, password) {
@@ -193,6 +194,18 @@ const socketClient = {
                 common.renderAllFlightsTable();
             }
         });
+
+        this.socket.on('flight_deleted', (data) => {
+            console.log('🗑️ 航班删除:', data.callsign);
+            const index = flightData.flights.findIndex(f => f.id === data.flightId);
+            if (index !== -1) {
+                flightData.flights.splice(index, 1);
+            }
+            if (common && auth.getCurrentUser()) {
+                common.renderManagedFlights(auth.getCurrentUser().type);
+                common.renderAllFlightsTable();
+            }
+        });
     },
 
     login(userData) {
@@ -261,14 +274,21 @@ const common = {
 
     renderManagedFlights(controlType) {
         const managedFlights = document.getElementById('managedFlights');
-        const flights = flightData.getFlightsByControl(controlType);
         
         if (!managedFlights) return;
+        
+        // CON页面不需要左侧管理面板，直接返回
+        if (controlType === 'CON') {
+            return;
+        }
+        
+        // 其他管制页面显示受管航班
+        const flights = flightData.getFlightsByControl(controlType);
         
         managedFlights.innerHTML = '';
         
         if (flights.length === 0) {
-            managedFlights.innerHTML = '<div class="no-flights">暂无受管航班</div>';
+            managedFlights.innerHTML = '<div class="no-flights">暂无航班</div>';
             return;
         }
         
@@ -276,6 +296,7 @@ const common = {
             const flightCard = document.createElement('div');
             flightCard.className = `flight-card ${controlType.toLowerCase()}-flight`;
             
+            // 其他管制页面：显示移交按钮
             flightCard.innerHTML = `
                 <div class="flight-header">
                     <div class="callsign">${flight.callsign}</div>
@@ -305,6 +326,7 @@ const common = {
     renderAllFlightsTable() {
         const tableBody = document.getElementById('allFlightsTable');
         const flights = flightData.getFlights();
+        const currentUser = auth.getCurrentUser();
         
         if (!tableBody) return;
         
@@ -313,15 +335,31 @@ const common = {
         flights.forEach(flight => {
             const row = document.createElement('tr');
             
-            row.innerHTML = `
-                <td>${flight.callsign}</td>
-                <td>${flightData.getStatusText(flight.status)}</td>
-                <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
-                <td>${flight.position}</td>
-                <td>${flight.departure}</td>
-                <td>${flight.destination}</td>
-                <td>${flight.remarks || '-'}</td>
-            `;
+            if (currentUser && currentUser.type === 'CON') {
+                // CON页面：显示复选框和删除按钮
+                row.innerHTML = `
+                    <td><input type="checkbox" class="flight-checkbox" value="${flight.id}"></td>
+                    <td>${flight.callsign}</td>
+                    <td>${flightData.getStatusText(flight.status)}</td>
+                    <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
+                    <td>${flight.position}</td>
+                    <td>${flight.departure}</td>
+                    <td>${flight.destination}</td>
+                    <td>${flight.remarks || '-'}</td>
+                    <td><button class="action-btn delete-btn" onclick="common.deleteFlight('${flight.id}')">删除</button></td>
+                `;
+            } else {
+                // 其他页面：正常显示
+                row.innerHTML = `
+                    <td>${flight.callsign}</td>
+                    <td>${flightData.getStatusText(flight.status)}</td>
+                    <td><span class="control-badge-small ${flight.currentControl.toLowerCase()}-badge">${flight.currentControl}</span></td>
+                    <td>${flight.position}</td>
+                    <td>${flight.departure}</td>
+                    <td>${flight.destination}</td>
+                    <td>${flight.remarks || '-'}</td>
+                `;
+            }
             
             tableBody.appendChild(row);
         });
@@ -356,10 +394,18 @@ const common = {
         console.log('👤 初始化用户页面:', user.name);
 
         // 更新界面元素
-        document.getElementById('controlBadge').textContent = `${user.name} (${user.type})`;
-        document.getElementById('controlBadge').className = `control-badge ${user.type.toLowerCase()}-badge`;
-        document.getElementById('managementTitle').textContent = `${user.name}航班`;
-        document.getElementById('managementTitle').className = `panel-title ${user.type.toLowerCase()}-title`;
+        const controlBadge = document.getElementById('controlBadge');
+        if (controlBadge) {
+            controlBadge.textContent = `${user.name} (${user.type})`;
+            controlBadge.className = `control-badge ${user.type.toLowerCase()}-badge`;
+        }
+
+        // CON页面不需要managementTitle元素
+        const managementTitle = document.getElementById('managementTitle');
+        if (managementTitle) {
+            managementTitle.textContent = `${user.name}航班`;
+            managementTitle.className = `panel-title ${user.type.toLowerCase()}-title`;
+        }
 
         // 初始化时间
         this.initTime();
@@ -378,11 +424,19 @@ const common = {
         this.renderAllFlightsTable();
 
         // 绑定退出按钮
-        document.getElementById('logoutBtn').addEventListener('click', auth.logout);
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', auth.logout);
+        }
 
         // DEL页面特定初始化
         if (window.location.pathname.includes('del.html')) {
             this.initDelPage();
+        }
+
+        // CON页面特定初始化
+        if (window.location.pathname.includes('con.html')) {
+            this.initConPage();
         }
     },
 
@@ -626,6 +680,112 @@ const common = {
         const dialog = document.getElementById('transferDialog');
         if (dialog) {
             dialog.remove();
+        }
+    },
+
+    // 删除航班
+    deleteFlight(flightId) {
+        const flight = flightData.flights.find(f => f.id === flightId);
+        if (!flight) return;
+
+        if (confirm(`确定要删除航班 ${flight.callsign} 吗？此操作不可撤销。`)) {
+            // 从本地数组中删除
+            const index = flightData.flights.findIndex(f => f.id === flightId);
+            if (index !== -1) {
+                flightData.flights.splice(index, 1);
+            }
+
+            // 通过WebSocket通知服务器删除
+            if (socketClient.isConnected) {
+                socketClient.socket.emit('flight_delete', { flightId });
+            }
+
+            // 更新界面
+            this.renderManagedFlights(auth.getCurrentUser().type);
+            this.renderAllFlightsTable();
+
+            alert(`航班 ${flight.callsign} 已删除`);
+        }
+    },
+
+    // 全选/取消全选
+    toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const flightCheckboxes = document.querySelectorAll('.flight-checkbox');
+        
+        flightCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        
+        this.updateDeleteSelectedButton();
+    },
+
+    // 更新删除选中按钮状态
+    updateDeleteSelectedButton() {
+        const selectedCheckboxes = document.querySelectorAll('.flight-checkbox:checked');
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.style.display = selectedCheckboxes.length > 0 ? 'block' : 'none';
+        }
+    },
+
+    // CON页面初始化
+    initConPage() {
+        // 绑定全选复选框事件
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', () => this.toggleSelectAll());
+        }
+
+        // 绑定删除选中按钮事件
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedFlights());
+        }
+
+        // 绑定单个复选框事件
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.classList.contains('flight-checkbox')) {
+                this.updateDeleteSelectedButton();
+            }
+        });
+    },
+
+    // 删除选中的航班
+    deleteSelectedFlights() {
+        const selectedCheckboxes = document.querySelectorAll('.flight-checkbox:checked');
+        
+        if (selectedCheckboxes.length === 0) {
+            alert('请先选择要删除的航班');
+            return;
+        }
+
+        const flightIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        const callsigns = flightIds.map(id => {
+            const flight = flightData.flights.find(f => f.id === id);
+            return flight ? flight.callsign : '';
+        }).filter(Boolean);
+
+        if (confirm(`确定要删除以下 ${flightIds.length} 个航班吗？\n${callsigns.join(', ')}\n此操作不可撤销。`)) {
+            // 删除航班
+            flightIds.forEach(flightId => {
+                const index = flightData.flights.findIndex(f => f.id === flightId);
+                if (index !== -1) {
+                    flightData.flights.splice(index, 1);
+                }
+
+                // 通知服务器删除
+                if (socketClient.isConnected) {
+                    socketClient.socket.emit('flight_delete', { flightId });
+                }
+            });
+
+            // 更新界面
+            this.renderManagedFlights(auth.getCurrentUser().type);
+            this.renderAllFlightsTable();
+
+            alert(`已删除 ${flightIds.length} 个航班`);
         }
     }
 };

@@ -95,6 +95,8 @@ async function searchFromTiny(options = {}) {
     }
 }
 
+
+//例子：
 // 上传数据
 updateToTiny('username', '张三')
     .then(result => console.log('成功:', result.message))
