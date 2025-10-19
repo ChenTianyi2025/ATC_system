@@ -95,16 +95,62 @@ async function searchFromTiny(options = {}) {
     }
 }
 
+/**
+ * 从TinyWebDB删除数据
+ * @param {string} tag - 要删除的变量名
+ * @returns {Promise} Promise对象，resolve时表示成功，reject时包含错误信息
+ */
+async function deleteFromTiny(tag) {
+    try {
+        const formData = new FormData();
+        formData.append('user', TINYWEBDB_CONFIG.user);
+        formData.append('secret', TINYWEBDB_CONFIG.secret);
+        formData.append('action', 'delete');
+        formData.append('tag', tag);
+
+        const response = await fetch(TINYWEBDB_CONFIG.apiUrl, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP错误! 状态: ${response.status}`);
+        }
+
+        const result = await response.text();
+        
+        if (response.ok) {
+            return { success: true, message: `变量 "${tag}" 删除成功` };
+        } else {
+            throw new Error(`删除失败: ${result}`);
+        }
+    } catch (error) {
+        console.error('删除数据时发生错误:', error);
+        throw error;
+    }
+}
+
+
+// 导出函数供其他模块使用
+module.exports = {
+    updateToTiny,
+    searchFromTiny,
+    deleteFromTiny
+};
 
 //例子：
 // 上传数据
-updateToTiny('username', '张三')
-    .then(result => console.log('成功:', result.message))
-    .catch(error => console.error('失败:', error));
+// updateToTiny('username', '张三')
+//     .then(result => console.log('成功:', result.message))
+//     .catch(error => console.error('失败:', error));
+// // 查询数据（使用默认参数）
+// searchFromTiny()
+//     .then(result => console.log('查询结果:', result.data));
+// // 删除单个变量
+// deleteFromTinyWebDB('要删除的变量名')
+//     .then(result => console.log(result.message))
+//     .catch(error => console.error(error));
 
-// 查询数据（使用默认参数）
-searchFromTiny()
-    .then(result => console.log('查询结果:', result.data));
 
 // // 查询数据（自定义参数）
 // searchFromTiny({

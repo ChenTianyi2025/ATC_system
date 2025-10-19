@@ -5,6 +5,9 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+// 导入TinyWebDB功能
+const { updateToTiny, searchFromTiny } = require('./tingwebdb_server.js');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -187,6 +190,42 @@ function getFlights() {
   return loadFlights();
 }
 
+// TinyWebDB同步函数
+async function syncFlightToTinyWebDB(flight) {
+  try {
+    // 使用航班呼号作为tag，航班其他信息作为value
+    const flightData = {
+      id: flight.id,
+      status: flight.status,
+      currentControl: flight.currentControl,
+      nextControl: flight.nextControl,
+      position: flight.position,
+      altitude: flight.altitude,
+      heading: flight.heading,
+      departure: flight.departure,
+      destination: flight.destination,
+      remarks: flight.remarks,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    await updateToTiny(flight.callsign, flightData);
+    console.log(`✈️ 航班 ${flight.callsign} 已同步到TinyWebDB`);
+  } catch (error) {
+    console.error(`❌ 航班 ${flight.callsign} 同步到TinyWebDB失败:`, error.message);
+  }
+}
+
+// 从TinyWebDB删除航班数据
+async function deleteFlightFromTinyWebDB(callsign) {
+  try {
+    // 通过更新为空值来"删除"数据
+    await updateToTiny(callsign, null);
+    console.log(`🗑️ 航班 ${callsign} 已从TinyWebDB删除`);
+  } catch (error) {
+    console.error(`❌ 航班 ${callsign} 从TinyWebDB删除失败:`, error.message);
+  }
+}
+
 // 更新航班数据
 function updateFlight(updatedFlight) {
   const flights = loadFlights();
@@ -194,6 +233,11 @@ function updateFlight(updatedFlight) {
   if (index !== -1) {
     flights[index] = { ...flights[index], ...updatedFlight };
     saveFlights(flights);
+    
+    // 同步到TinyWebDB（使用呼号作为tag）
+    const flight = flights[index];
+    syncFlightToTinyWebDB(flight);
+    
     return flights[index];
   }
   return null;
@@ -212,6 +256,10 @@ function addFlight(flightData) {
   };
   flights.push(newFlight);
   saveFlights(flights);
+  
+  // 同步到TinyWebDB
+  syncFlightToTinyWebDB(newFlight);
+  
   return newFlight;
 }
 
@@ -287,6 +335,9 @@ io.on('connection', (socket) => {
       flights.splice(index, 1);
       saveFlights(flights);
       
+      // 从TinyWebDB删除
+      deleteFlightFromTinyWebDB(deletedFlight.callsign);
+      
       // 广播删除事件给所有客户端
       io.emit('flight_deleted', { flightId: data.flightId, callsign: deletedFlight.callsign });
       console.log(`航班 ${deletedFlight.callsign} 已删除`);
@@ -318,6 +369,57 @@ app.get('/health', (req, res) => {
     connectedUsers: connectedUsers.size,
     timestamp: new Date().toISOString()
   });
+});
+
+// API路由 - 测试TinyWebDB同步
+app.get('/api/sync-to-tiny', async (req, res) => {
+  try {
+    const flights = getFlights();
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const flight of flights) {
+      try {
+        await syncFlightToTinyWebDB(flight);
+        successCount++;
+      } catch (error) {
+        console.error(`同步航班 ${flight.callsign} 失败:`, error);
+        errorCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `同步完成: ${successCount} 成功, ${errorCount} 失败`,
+      successCount,
+      errorCount,
+      totalFlights: flights.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '同步失败',
+      error: error.message
+    });
+  }
+});
+
+// API路由 - 从TinyWebDB查询航班
+app.get('/api/query-tiny', async (req, res) => {
+  try {
+    const result = await searchFromTiny({ count: 50, type: 'both' });
+    res.json({
+      success: true,
+      data: result.data,
+      message: '查询成功'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '查询失败',
+      error: error.message
+    });
+  }
 });
 
 // 默认路由 - 服务客户端文件
