@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信息大屏 - ATC系统</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .info-container {
+            min-height: 100vh;
+            background-color: var(--bg-dark);
+        }
+        
+        .info-header {
+            background-color: var(--bg-card);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .info-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .info-main-content {
+            padding: 20px;
+            height: calc(100vh - 70px);
+            overflow-y: auto;
+        }
+        
+        .info-panel-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            color: var(--text-light);
+        }
+        
+        .info-flights-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-flights-table th, .info-flights-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .info-flights-table th {
+            background-color: #2d3748;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        
+        .info-flights-table tr:hover {
+            background-color: #2d3748;
+        }
+        
+        .info-status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .info-control-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .info-no-flights {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+        
+        .refresh-btn {
+            background-color: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .back-btn {
+            background-color: #95a5a6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-btn:hover {
+            background-color: #7f8c8d;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="info-container">
+        <div class="info-header">
+            <h2>✈️ 模拟空中交通管制系统 - 信息大屏</h2>
+            <div>
+                <button id="refreshBtn" class="refresh-btn">🔄 刷新</button>
+                <a href="/" class="back-btn">🔙 返回登录</a>
+            </div>
+        </div>
+
+        <div class="info-main-content">
+            <h3 class="info-panel-title">📋 实时航班信息</h3>
+            <div class="global-view">
+                <table class="info-flights-table">
+                    <thead>
+                        <tr>
+                            <th>呼号</th>
+                            <th>状态</th>
+                            <th>当前管制</th>
+                            <th>位置</th>
+                            <th>高度</th>
+                            <th>出发地</th>
+                            <th>目的地</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="infoFlightsTable">
+                        <tr>
+                            <td colspan="8" class="info-no-flights">正在加载航班数据...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 信息大屏专用脚本
+        console.log('🚀 信息大屏开始加载...');
+        
+        let socket = null;
+        
+        // 初始化WebSocket连接
+        function initSocket() {
+            try {
+                socket = io();
+                
+                socket.on('connect', () => {
+                    console.log('✅ 已连接到服务器');
+                    // 发送特殊的信息大屏连接标识
+                    socket.emit('info_screen_connect');
+                });
+                
+                socket.on('disconnect', () => {
+                    console.log('❌ 与服务器断开连接');
+                });
+                
+                // 接收航班数据
+                socket.on('flights_data', (flights) => {
+                    console.log('📡 收到航班数据:', flights.length, '个航班');
+                    renderFlights(flights);
+                });
+                
+                // 航班更新
+                socket.on('flight_updated', (flight) => {
+                    console.log('🔄 航班更新:', flight.callsign);
+                    // 重新请求完整数据以确保同步
+                    socket.emit('get_flights');
+                });
+                
+                // 新航班添加
+                socket.on('flight_added', (flight) => {
+                    console.log('✈️ 新航班添加:', flight.callsign);
+                    socket.emit('get_flights');
+                });
+                
+                // 航班删除
+                socket.on('flight_deleted', (data) => {
+                    console.log('🗑️ 航班删除:', data.callsign);
+                    socket.emit('get_flights');
+                });
+                
+                // 请求初始航班数据
+                socket.emit('get_flights');
+                
+            } catch (error) {
+                console.error('❌ WebSocket连接失败:', error);
+            }
+        }
+        
+        // 渲染航班数据
+        function renderFlights(flights) {
+            const tableBody = document.getElementById('infoFlightsTable');
+            
+            if (!tableBody) return;
+            
+            if (flights.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="info-no-flights">暂无航班数据</td></tr>';
+                return;
+            }
+            
+            // 状态文本映射
+            const statusTextMap = {
+                'scheduled': '计划中',
+                'boarding': '登机中',
+                'taxiing': '滑行中',
+                'ready': '准备起飞',
+                'departed': '已起飞',
+                'cruising': '巡航中'
+            };
+            
+            // 管制单位颜色映射
+            const controlColors = {
+                'DEL': '#3498db',
+                'GND': '#2ecc71',
+                'TWR': '#e74c3c',
+                'APP': '#9b59b6',
+                'CEN': '#f39c12'
+            };
+            
+            // 状态颜色映射
+            const statusColors = {
+                'scheduled': '#7f8c8d',
+                'boarding': '#3498db',
+                'taxiing': '#f39c12',
+                'ready': '#2ecc71',
+                'departed': '#9b59b6',
+                'cruising': '#1abc9c'
+            };
+            
+            let html = '';
+            
+            flights.forEach(flight => {
+                html += `
+                    <tr>
+                        <td><strong>${flight.callsign}</strong></td>
+                        <td>
+                            <span class="info-status-badge" style="background-color: ${statusColors[flight.status] || '#7f8c8d'}">
+                                ${statusTextMap[flight.status] || flight.status}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="info-control-badge" style="background-color: ${controlColors[flight.currentControl] || '#95a5a6'}">
+                                ${flight.currentControl}
+                            </span>
+                        </td>
+                        <td>${flight.position}</td>
+                        <td>${flight.altitude > 0 ? flight.altitude + 'ft' : '-'}</td>
+                        <td>${flight.departure}</td>
+                        <td>${flight.destination}</td>
+                        <td>${flight.remarks || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.innerHTML = html;
+        }
+        
+        // 刷新数据
+        function refreshData() {
+            if (socket && socket.connected) {
+                socket.emit('get_flights');
+                console.log('🔄 手动刷新航班数据');
+            }
+        }
+        
+        // DOM加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 信息大屏DOM加载完成');
+            
+            // 绑定刷新按钮事件
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', refreshData);
+            }
+            
+            // 初始化WebSocket连接
+            initSocket();
+        });
+        
+        console.log('🎉 信息大屏加载完成！');
+    </script>
+</body>
+</html>

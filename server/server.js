@@ -267,27 +267,34 @@ function addFlight(flightData) {
 let flights = initializeFlights();
 let connectedUsers = new Map();
 
-// Socket.io 连接处理
-io.on('connection', (socket) => {
-  console.log('用户连接:', socket.id);
+  // Socket.io 连接处理
+  io.on('connection', (socket) => {
+    console.log('用户连接:', socket.id);
 
-  // 用户登录
-  socket.on('user_login', (userData) => {
-    connectedUsers.set(socket.id, {
-      id: socket.id,
-      controlType: userData.controlType,
-      userName: userData.userName,
-      loginTime: new Date().toISOString()
+    // 信息大屏连接
+    socket.on('info_screen_connect', () => {
+      console.log('信息大屏连接:', socket.id);
+      // 发送当前航班数据给信息大屏
+      socket.emit('flights_data', getFlights());
     });
-    
-    console.log(`用户登录: ${userData.userName} (${userData.controlType})`);
-    
-    // 发送当前航班数据给新用户
-    socket.emit('flights_data', getFlights());
-    
-    // 广播用户连接状态
-    io.emit('users_update', Array.from(connectedUsers.values()));
-  });
+
+    // 用户登录
+    socket.on('user_login', (userData) => {
+      connectedUsers.set(socket.id, {
+        id: socket.id,
+        controlType: userData.controlType,
+        userName: userData.userName,
+        loginTime: new Date().toISOString()
+      });
+      
+      console.log(`用户登录: ${userData.userName} (${userData.controlType})`);
+      
+      // 发送当前航班数据给新用户
+      socket.emit('flights_data', getFlights());
+      
+      // 广播用户连接状态
+      io.emit('users_update', Array.from(connectedUsers.values()));
+    });
 
   // 请求航班数据
   socket.on('get_flights', () => {
