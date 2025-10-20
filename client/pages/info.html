@@ -25,10 +25,24 @@
             font-size: 24px;
         }
         
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
         .info-main-content {
             padding: 20px;
             height: calc(100vh - 70px);
             overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .info-content-wrapper {
+            width: 100%;
+            max-width: 1200px;
         }
         
         .info-panel-title {
@@ -37,6 +51,73 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #3498db;
             color: var(--text-light);
+            text-align: center;
+        }
+        
+        .operations-log {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .log-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .clear-log-btn {
+            background-color: #7f8c8d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .clear-log-btn:hover {
+            background-color: #95a5a6;
+        }
+        
+        .log-content {
+            height: 150px;
+            overflow-y: auto;
+            background-color: #2d3748;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #e6e6e6;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid #3d4b5f;
+        }
+        
+        .log-time {
+            color: #3498db;
+            margin-right: 8px;
+        }
+        
+        .log-user {
+            color: #2ecc71;
+            margin-right: 8px;
+        }
+        
+        .log-action {
+            color: #e74c3c;
+        }
+        
+        .log-flight {
+            color: #f39c12;
         }
         
         .info-flights-table {
@@ -124,34 +205,49 @@
     <div class="info-container">
         <div class="info-header">
             <h2>✈️ 模拟空中交通管制系统 - 信息大屏</h2>
-            <div>
+            <div class="header-actions">
                 <button id="refreshBtn" class="refresh-btn">🔄 刷新</button>
                 <a href="/" class="back-btn">🔙 返回登录</a>
             </div>
         </div>
 
         <div class="info-main-content">
-            <h3 class="info-panel-title">📋 实时航班信息</h3>
-            <div class="global-view">
-                <table class="info-flights-table">
-                    <thead>
-                        <tr>
-                            <th>呼号</th>
-                            <th>状态</th>
-                            <th>当前管制</th>
-                            <th>位置</th>
-                            <th>高度</th>
-                            <th>出发地</th>
-                            <th>目的地</th>
-                            <th>备注</th>
-                        </tr>
-                    </thead>
-                    <tbody id="infoFlightsTable">
-                        <tr>
-                            <td colspan="8" class="info-no-flights">正在加载航班数据...</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="info-content-wrapper">
+                <div class="operations-log">
+                    <div class="log-title">
+                        <span>📡 实时操作日志</span>
+                        <button id="clearLogBtn" class="clear-log-btn">清空日志</button>
+                    </div>
+                    <div id="logContent" class="log-content">
+                        <div class="log-entry">
+                            <span class="log-time">[----/--/-- --:--:--]</span>
+                            <span class="log-action">信息大屏已启动</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 class="info-panel-title">📋 实时航班信息</h3>
+                <div class="global-view">
+                    <table class="info-flights-table">
+                        <thead>
+                            <tr>
+                                <th>呼号</th>
+                                <th>状态</th>
+                                <th>当前管制</th>
+                                <th>位置</th>
+                                <th>高度</th>
+                                <th>出发地</th>
+                                <th>目的地</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="infoFlightsTable">
+                            <tr>
+                                <td colspan="8" class="info-no-flights">正在加载航班数据...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -162,6 +258,97 @@
         console.log('🚀 信息大屏开始加载...');
         
         let socket = null;
+        let currentFlights = []; // 存储当前显示的航班数据
+        
+        // 从TinyWebDB获取并核对数据
+        async function fetchDataFromTinyDBAndVerify() {
+            try {
+                console.log('🔍 从TinyWebDB获取数据并核对...');
+                
+                // 显示加载状态
+                const tableBody = document.getElementById('infoFlightsTable');
+                if (tableBody) {
+                    tableBody.innerHTML = '<tr><td colspan="8" class="info-no-flights">🔄 正在从TinyWebDB获取数据并核对...</td></tr>';
+                }
+                
+                // 调用新的API端点获取双重验证数据
+                const response = await fetch('/api/info-screen-data');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const { localFlights, tinyFlights, comparison } = result.data;
+                    
+                    console.log('📊 数据核对结果:', {
+                        localCount: comparison.localCount,
+                        tinyCount: comparison.tinyCount,
+                        match: comparison.match
+                    });
+                    
+                    // 如果数据匹配，优先使用TinyWebDB数据
+                    if (tinyFlights.length > 0) {
+                        currentFlights = tinyFlights;
+                        renderFlights(tinyFlights);
+                        console.log('✅ 使用TinyWebDB数据渲染:', tinyFlights.length, '个航班');
+                    } else {
+                        // 如果TinyWebDB没有数据，回退到本地数据
+                        currentFlights = localFlights;
+                        renderFlights(localFlights);
+                        console.log('⚠️ TinyWebDB无数据，使用本地数据:', localFlights.length, '个航班');
+                    }
+                    
+                    // 显示数据源信息
+                    showDataSourceInfo(comparison);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('❌ 从TinyWebDB获取数据失败:', error);
+                // 失败时回退到WebSocket数据
+                if (socket && socket.connected) {
+                    socket.emit('get_flights');
+                }
+            }
+        }
+        
+        // 显示数据源信息
+        function showDataSourceInfo(comparison) {
+            const header = document.querySelector('.info-header h2');
+            if (header) {
+                const status = comparison.match ? '✅' : '⚠️';
+                const source = comparison.tinyCount > 0 ? 'TinyDB' : '本地';
+                header.innerHTML = `✈️ 模拟空中交通管制系统 - 信息大屏 <small style="font-size: 14px; color: #8a8a8a;">(${status} 数据源: ${source} | 本地: ${comparison.localCount} | TinyDB: ${comparison.tinyCount})</small>`;
+            }
+        }
+        
+        // 添加日志条目
+        function addLogEntry(action, user = '', flight = '') {
+            const logContent = document.getElementById('logContent');
+            if (!logContent) return;
+            
+            const now = new Date();
+            const timeString = `[${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-time">${timeString}</span>
+                ${user ? `<span class="log-user">[${user}]</span>` : ''}
+                <span class="log-action">${action}</span>
+                ${flight ? `<span class="log-flight"> ${flight}</span>` : ''}
+            `;
+            
+            logContent.appendChild(logEntry);
+            logContent.scrollTop = logContent.scrollHeight; // 自动滚动到底部
+        }
+        
+        // 清空日志
+        function clearLog() {
+            const logContent = document.getElementById('logContent');
+            if (logContent) {
+                logContent.innerHTML = '';
+                addLogEntry('日志已清空');
+            }
+        }
         
         // 初始化WebSocket连接
         function initSocket() {
@@ -170,44 +357,70 @@
                 
                 socket.on('connect', () => {
                     console.log('✅ 已连接到服务器');
+                    addLogEntry('信息大屏已连接到服务器');
                     // 发送特殊的信息大屏连接标识
                     socket.emit('info_screen_connect');
                 });
                 
                 socket.on('disconnect', () => {
                     console.log('❌ 与服务器断开连接');
+                    addLogEntry('与服务器断开连接');
+                });
+                
+                // 用户连接
+                socket.on('user_connected', (userData) => {
+                    addLogEntry(`用户连接`, `${userData.userName} (${userData.controlType})`);
+                });
+                
+                // 用户断开
+                socket.on('user_disconnected', (userData) => {
+                    addLogEntry(`用户断开`, `${userData.userName} (${userData.controlType})`);
+                });
+                
+                // 航班移交
+                socket.on('flight_transfer', (data) => {
+                    addLogEntry(`航班移交`, `${data.fromControl} → ${data.toControl}`, data.flight.callsign);
                 });
                 
                 // 接收航班数据
                 socket.on('flights_data', (flights) => {
                     console.log('📡 收到航班数据:', flights.length, '个航班');
-                    renderFlights(flights);
+                    addLogEntry(`收到航班数据`, '', `${flights.length} 个航班`);
+                    // 只在TinyDB获取失败时使用WebSocket数据
+                    if (currentFlights.length === 0) {
+                        currentFlights = flights;
+                        renderFlights(flights);
+                    }
                 });
                 
-                // 航班更新
+                // 航班更新 - 触发数据重新获取和核对
                 socket.on('flight_updated', (flight) => {
                     console.log('🔄 航班更新:', flight.callsign);
-                    // 重新请求完整数据以确保同步
-                    socket.emit('get_flights');
+                    addLogEntry(`航班更新`, flight.currentControl, flight.callsign);
+                    // 从TinyDB重新获取数据进行核对
+                    fetchDataFromTinyDBAndVerify();
                 });
                 
-                // 新航班添加
+                // 新航班添加 - 触发数据重新获取和核对
                 socket.on('flight_added', (flight) => {
                     console.log('✈️ 新航班添加:', flight.callsign);
-                    socket.emit('get_flights');
+                    addLogEntry(`新航班添加`, '', flight.callsign);
+                    fetchDataFromTinyDBAndVerify();
                 });
                 
-                // 航班删除
+                // 航班删除 - 触发数据重新获取和核对
                 socket.on('flight_deleted', (data) => {
                     console.log('🗑️ 航班删除:', data.callsign);
-                    socket.emit('get_flights');
+                    addLogEntry(`航班删除`, '', data.callsign);
+                    fetchDataFromTinyDBAndVerify();
                 });
                 
-                // 请求初始航班数据
-                socket.emit('get_flights');
+                // 首次加载时从TinyDB获取数据
+                fetchDataFromTinyDBAndVerify();
                 
             } catch (error) {
                 console.error('❌ WebSocket连接失败:', error);
+                addLogEntry(`WebSocket连接失败: ${error.message}`);
             }
         }
         
@@ -295,6 +508,12 @@
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', refreshData);
+            }
+            
+            // 绑定清空日志按钮事件
+            const clearLogBtn = document.getElementById('clearLogBtn');
+            if (clearLogBtn) {
+                clearLogBtn.addEventListener('click', clearLog);
             }
             
             // 初始化WebSocket连接

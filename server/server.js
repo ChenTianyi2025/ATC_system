@@ -294,6 +294,34 @@ let connectedUsers = new Map();
       
       // 广播用户连接状态
       io.emit('users_update', Array.from(connectedUsers.values()));
+      
+      // 向信息大屏发送用户连接事件
+      socket.broadcast.emit('user_connected', {
+        userName: userData.userName,
+        controlType: userData.controlType,
+        socketId: socket.id,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // 断开连接处理
+    socket.on('disconnect', () => {
+      const user = connectedUsers.get(socket.id);
+      if (user) {
+        console.log(`用户断开: ${user.userName} (${user.controlType})`);
+        connectedUsers.delete(socket.id);
+        
+        // 广播用户断开状态
+        io.emit('users_update', Array.from(connectedUsers.values()));
+        
+        // 向信息大屏发送用户断开事件
+        socket.broadcast.emit('user_disconnected', {
+          userName: user.userName,
+          controlType: user.controlType,
+          socketId: socket.id,
+          timestamp: new Date().toISOString()
+        });
+      }
     });
 
   // 请求航班数据
@@ -316,6 +344,14 @@ let connectedUsers = new Map();
       // 广播给所有客户端
       io.emit('flight_updated', flight);
       console.log(`航班 ${flight.callsign} 从 ${data.fromControl} 移交至 ${data.toControl}`);
+      
+      // 向信息大屏发送航班移交事件
+      socket.broadcast.emit('flight_transfer', {
+        flight: flight,
+        fromControl: data.fromControl,
+        toControl: data.toControl,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 
@@ -424,6 +460,60 @@ app.get('/api/query-tiny', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '查询失败',
+      error: error.message
+    });
+  }
+});
+
+// API路由 - 信息大屏获取数据（从TinyWebDB和本地文件双重验证）
+app.get('/api/info-screen-data', async (req, res) => {
+  try {
+    // 获取本地文件数据
+    const localFlights = getFlights();
+    
+    // 从TinyWebDB获取数据
+    const tinyResult = await searchFromTiny({ count: 50, type: 'both' });
+    
+    // 解析TinyWebDB数据
+    const tinyFlights = [];
+    if (tinyResult.success && tinyResult.data) {
+      // 遍历TinyWebDB数据，提取航班信息
+      for (const [tag, value] of Object.entries(tinyResult.data)) {
+        // 跳过非航班数据（如示例数据）
+        if (tag === 'username') continue;
+        
+        try {
+          const flightData = JSON.parse(value);
+          // 添加呼号到数据中
+          flightData.callsign = tag;
+          tinyFlights.push(flightData);
+        } catch (parseError) {
+          console.warn(`解析TinyWebDB数据失败 (${tag}):`, parseError);
+        }
+      }
+    }
+    
+    // 数据核对和合并
+    const mergedData = {
+      localFlights: localFlights,
+      tinyFlights: tinyFlights,
+      comparison: {
+        localCount: localFlights.length,
+        tinyCount: tinyFlights.length,
+        match: localFlights.length === tinyFlights.length
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: mergedData,
+      message: '数据获取和核对完成'
+    });
+  } catch (error) {
+    console.error('信息大屏数据获取失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '数据获取失败',
       error: error.message
     });
   }
