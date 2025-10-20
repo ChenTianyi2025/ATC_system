@@ -63,5 +63,18 @@
     "nextControl": "GND",
     "altitude": 0,
     "heading": 0
+  },
+  {
+    "id": "1760968210309",
+    "callsign": "SWE9191",
+    "status": "ready",
+    "position": "跑道等待点",
+    "departure": "VHHH",
+    "destination": "KDCA",
+    "remarks": "NPSE航线",
+    "currentControl": "TWR",
+    "nextControl": "GND",
+    "altitude": 0,
+    "heading": 0
   }
 ]

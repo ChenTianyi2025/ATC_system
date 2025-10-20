@@ -618,25 +618,45 @@ const common = {
 
         const fromControl = flight.currentControl;
         
-        // 更新航班状态
-        flight.currentControl = toControl;
-        this.updateFlightStatusForTransfer(flight, toControl);
+        // 通过WebSocket通知服务器执行移交
+        let newStatus = 'taxiing';
+        let newPosition = '移交中';
+        
+        // 根据目标管制单位设置状态和位置
+        switch(toControl) {
+            case 'DEL':
+                newStatus = 'scheduled';
+                newPosition = '登机口';
+                break;
+            case 'GND':
+                newStatus = 'taxiing';
+                newPosition = '滑行道';
+                break;
+            case 'TWR':
+                newStatus = 'ready';
+                newPosition = '跑道等待点';
+                break;
+            case 'APP':
+                newStatus = 'departed';
+                newPosition = '离场区域';
+                break;
+            case 'CEN':
+                newStatus = 'cruising';
+                newPosition = '航路';
+                break;
+        }
 
         // 通过WebSocket通知服务器
-        socketClient.transferFlight(
+        if (socketClient.transferFlight(
             flightId,
             fromControl,
             toControl,
-            flight.status,
-            flight.position
-        );
-
-        // 更新本地界面
-        this.renderManagedFlights(auth.getCurrentUser().type);
-        this.renderAllFlightsTable();
-
-        // 隐藏对话框
-        this.hideTransferDialog();
+            newStatus,
+            newPosition
+        )) {
+            // 隐藏对话框
+            this.hideTransferDialog();
+        }
     },
 
     // 根据移交目标更新航班状态

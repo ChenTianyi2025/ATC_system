@@ -387,17 +387,6 @@ let connectedUsers = new Map();
     }
   });
 
-  // 断开连接处理
-  socket.on('disconnect', () => {
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      console.log(`用户断开: ${user.userName} (${user.controlType})`);
-      connectedUsers.delete(socket.id);
-      
-      // 广播用户断开状态
-      io.emit('users_update', Array.from(connectedUsers.values()));
-    }
-  });
 });
 
 // API路由 - 获取航班数据
