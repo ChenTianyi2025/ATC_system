@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 导入TinyWebDB功能
-const { updateToTiny, searchFromTiny } = require('./tingwebdb_server.js');
+const { updateToTiny, searchFromTiny, deleteFromTiny } = require('./tingwebdb_server.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -336,7 +336,7 @@ io.on('connection', (socket) => {
       saveFlights(flights);
       
       // 从TinyWebDB删除
-      deleteFlightFromTinyWebDB(deletedFlight.callsign);
+      deleteFromTiny(deletedFlight.callsign);
       
       // 广播删除事件给所有客户端
       io.emit('flight_deleted', { flightId: data.flightId, callsign: deletedFlight.callsign });

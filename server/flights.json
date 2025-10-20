@@ -1,31 +1,5 @@
 [
   {
-    "id": "1",
-    "callsign": "CPA123",
-    "status": "scheduled",
-    "currentControl": "DEL",
-    "nextControl": "GND",
-    "position": "Gate A1",
-    "altitude": 0,
-    "heading": 0,
-    "departure": "VHHH",
-    "destination": "ZBAA",
-    "remarks": ""
-  },
-  {
-    "id": "2",
-    "callsign": "CES456",
-    "status": "boarding",
-    "currentControl": "DEL",
-    "nextControl": "GND",
-    "position": "Gate B2",
-    "altitude": 0,
-    "heading": 0,
-    "departure": "VHHH",
-    "destination": "RJTT",
-    "remarks": ""
-  },
-  {
     "id": "3",
     "callsign": "UAL789",
     "status": "taxiing",
