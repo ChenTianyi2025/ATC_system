@@ -39,19 +39,6 @@
     "remarks": ""
   },
   {
-    "id": "6",
-    "callsign": "BAW567",
-    "status": "cruising",
-    "currentControl": "CEN",
-    "nextControl": "CEN",
-    "position": "150NM SW",
-    "altitude": 35000,
-    "heading": 320,
-    "departure": "VHHH",
-    "destination": "EGLL",
-    "remarks": ""
-  },
-  {
     "id": "1760966357354",
     "callsign": "CCA8725",
     "status": "ready",
