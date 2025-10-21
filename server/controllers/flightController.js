@@ -99,6 +99,15 @@ class FlightController {
                     toControl: data.toControl,
                     timestamp: new Date().toISOString()
                 });
+                
+                // 发送移交提示给目标管制单位
+                this.io.emit('flight_transfer_notification', {
+                    flight: flight.toJSON(),
+                    fromControl: data.fromControl,
+                    toControl: data.toControl,
+                    message: `航班 ${flight.callsign} 已从 ${data.fromControl} 移交至 ${data.toControl}`,
+                    timestamp: new Date().toISOString()
+                });
             }
         });
 

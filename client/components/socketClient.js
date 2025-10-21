@@ -89,6 +89,14 @@ const socketClient = {
                 }
             }
         });
+
+        // 航班移交提示
+        this.socket.on('flight_transfer_notification', (data) => {
+            console.log('📡 收到航班移交提示:', data);
+            if (typeof common !== 'undefined') {
+                common.showTransferNotification(data);
+            }
+        });
     },
 
     login(userData) {

@@ -580,6 +580,58 @@ const common = {
 
             alert(`已删除 ${flightIds.length} 个航班`);
         }
+    },
+
+    // 显示航班移交提示
+    showTransferNotification(data) {
+        const user = typeof auth !== 'undefined' ? auth.getCurrentUser() : null;
+        if (!user) return;
+
+        // 只在接收移交的管制单位显示提示
+        if (data.toControl !== user.type) return;
+
+        // 移除已存在的提示
+        const existingNotification = document.getElementById('transferNotification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+
+        // 创建提示元素
+        const notification = document.createElement('div');
+        notification.id = 'transferNotification';
+        notification.className = 'transfer-notification';
+        
+        const time = new Date(data.timestamp).toLocaleTimeString();
+        
+        notification.innerHTML = `
+            <div class="notification-header">
+                <div class="notification-title">📡 航班移交通知</div>
+                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+            </div>
+            <div class="notification-content">
+                航班 <span class="notification-flight">${data.flight.callsign}</span> 已从 
+                <span class="notification-flight">${data.fromControl}</span> 移交至您所在的 
+                <span class="notification-flight">${data.toControl}</span> 管制单位
+            </div>
+            <div class="notification-time">${time}</div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // 显示提示
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+
+        // 自动隐藏提示
+        setTimeout(() => {
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 8000); // 8秒后自动隐藏
     }
 };
 
