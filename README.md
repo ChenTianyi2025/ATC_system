@@ -31,11 +31,11 @@ ATC_system/
 │   ├── models/           # 数据模型层
 │   ├── routes/           # 路由定义
 │   ├── services/         # 服务层
-│   ├── .env             # 环境配置文件
-│   ├── .env.example     # 环境配置示例
 │   ├── app.js           # 主应用文件
 │   ├── package.json     # 依赖配置
 │   └── tingwebdb_server.js # TinyWebDB集成
+├── .env                 # 环境配置文件
+├── .env.example         # 环境配置示例
 └── README.md            # 项目说明文档
 ```
 
@@ -219,8 +219,11 @@ npm install
 
 2. **配置环境**
 ```bash
+# 复制示例配置文件（在项目根目录）
 cp .env.example .env
+
 # 编辑 .env 文件配置生产环境参数
+nano .env  # 或使用其他编辑器
 ```
 
 3. **启动服务**

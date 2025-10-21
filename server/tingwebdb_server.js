@@ -1,8 +1,8 @@
 // TinyWebDB API配置
 const TINYWEBDB_CONFIG = {
-    apiUrl: 'https://tinywebdb.appinventor.space/api',
-    user: 'cty123456',
-    secret: 'a46a5f05'
+    apiUrl: process.env.TINYWEBDB_URL || 'https://tinywebdb.appinventor.space/api',
+    user: process.env.TINYWEBDB_USERNAME || 'cty123456',
+    secret: process.env.TINYWEBDB_PASSWORD || 'a46a5f05'
 };
 
 /**
