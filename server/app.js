@@ -5,6 +5,10 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const dotenv = require('dotenv');
+
+// 加载环境变量
+dotenv.config();
 
 // 导入路由和控制器
 const { router, setController } = require('./routes/api');

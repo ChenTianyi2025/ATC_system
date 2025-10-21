@@ -55,26 +55,39 @@
     "id": "1760966357354",
     "callsign": "CCA8725",
     "status": "ready",
-    "position": "跑道等待点",
-    "departure": "VHHH",
-    "destination": "ZBAA",
-    "remarks": "NPSE航线",
     "currentControl": "TWR",
     "nextControl": "GND",
+    "position": "跑道等待点",
     "altitude": 0,
-    "heading": 0
+    "heading": 0,
+    "departure": "VHHH",
+    "destination": "ZBAA",
+    "remarks": "NPSE航线"
   },
   {
     "id": "1760968210309",
     "callsign": "SWE9191",
     "status": "ready",
-    "position": "跑道等待点",
-    "departure": "VHHH",
-    "destination": "KDCA",
-    "remarks": "NPSE航线",
     "currentControl": "TWR",
     "nextControl": "GND",
+    "position": "跑道等待点",
     "altitude": 0,
-    "heading": 0
+    "heading": 0,
+    "departure": "VHHH",
+    "destination": "KDCA",
+    "remarks": "NPSE航线"
+  },
+  {
+    "id": "1761025281459",
+    "callsign": "CCA5762",
+    "status": "scheduled",
+    "currentControl": "DEL",
+    "nextControl": "GND",
+    "position": "Gate 100",
+    "altitude": 0,
+    "heading": 0,
+    "departure": "VHHH",
+    "destination": "KORD",
+    "remarks": ""
   }
 ]
