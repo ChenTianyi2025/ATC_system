@@ -2,10 +2,10 @@
   {
     "id": "3",
     "callsign": "UAL789",
-    "status": "taxiing",
-    "currentControl": "GND",
-    "nextControl": "TWR",
-    "position": "Taxiway A",
+    "status": "ready",
+    "currentControl": "TWR",
+    "nextControl": "APP",
+    "position": "跑道等待点",
     "altitude": 0,
     "heading": 120,
     "departure": "VHHH",
@@ -67,14 +67,27 @@
   {
     "id": "1761025281459",
     "callsign": "CCA5762",
-    "status": "scheduled",
+    "status": "taxiing",
+    "currentControl": "GND",
+    "nextControl": "TWR",
+    "position": "滑行道",
+    "altitude": 0,
+    "heading": 0,
+    "departure": "VHHH",
+    "destination": "KORD",
+    "remarks": ""
+  },
+  {
+    "id": "1770292551543",
+    "callsign": "SWE1828",
+    "status": "boarding",
     "currentControl": "DEL",
     "nextControl": "GND",
     "position": "Gate 100",
     "altitude": 0,
     "heading": 0,
     "departure": "VHHH",
-    "destination": "KORD",
+    "destination": "KSAN",
     "remarks": ""
   }
 ]
