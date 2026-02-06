@@ -18,7 +18,10 @@ const common = {
     renderManagedFlights(controlType) {
         const managedFlights = document.getElementById('managedFlights');
         
-        if (!managedFlights) return;
+        if (!managedFlights) {
+            console.warn('⚠️ managedFlights 元素未找到');
+            return;
+        }
         
         // CON页面不需要左侧管理面板，直接返回
         if (controlType === 'CON') {
@@ -27,6 +30,8 @@ const common = {
         
         // 其他管制页面显示受管航班
         const flights = typeof flightData !== 'undefined' ? flightData.getFlightsByControl(controlType) : [];
+        
+        console.log(`🔄 渲染 ${controlType} 管制航班:`, flights.length, '个航班');
         
         managedFlights.innerHTML = '';
         
@@ -71,7 +76,12 @@ const common = {
         const flights = typeof flightData !== 'undefined' ? flightData.getFlights() : [];
         const currentUser = typeof auth !== 'undefined' ? auth.getCurrentUser() : null;
         
-        if (!tableBody) return;
+        if (!tableBody) {
+            console.warn('⚠️ allFlightsTable 元素未找到');
+            return;
+        }
+        
+        console.log('🔄 渲染所有航班表格:', flights.length, '个航班');
         
         tableBody.innerHTML = '';
         
@@ -131,6 +141,7 @@ const common = {
             // 立即更新本地界面
             const user = typeof auth !== 'undefined' ? auth.getCurrentUser() : null;
             if (user) {
+                console.log('🔄 移交后更新本地界面...');
                 this.renderManagedFlights(user.type);
                 this.renderAllFlightsTable();
             }

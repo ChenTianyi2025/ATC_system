@@ -317,7 +317,11 @@
             if (header) {
                 const status = comparison.match ? '✅' : '⚠️';
                 const source = comparison.tinyCount > 0 ? 'TinyDB' : '本地';
+                const statusText = comparison.match 
+                    ? '本地数据与TinyWebDB数据一致' 
+                    : `本地数据与TinyWebDB数据不一致。本地数据: ${comparison.localCount} 条, TinyWebDB数据: ${comparison.tinyCount} 条。建议检查TinyWebDB连接或数据同步。`;
                 header.innerHTML = `✈️ 模拟空中交通管制系统 - 信息大屏 <small style="font-size: 14px; color: #8a8a8a;">(${status} 数据源: ${source} | 本地: ${comparison.localCount} | TinyDB: ${comparison.tinyCount})</small>`;
+                header.title = statusText;
             }
         }
         

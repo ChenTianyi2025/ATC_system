@@ -32,12 +32,15 @@ const socketClient = {
             console.log('📡 收到航班数据:', flights.length, '个航班');
             if (typeof flightData !== 'undefined') {
                 flightData.flights = flights;
+                console.log('✅ 本地航班数据已更新');
             }
             if (typeof common !== 'undefined' && typeof auth !== 'undefined') {
                 const user = auth.getCurrentUser();
                 if (user) {
+                    console.log('🔄 重新渲染航班列表...');
                     common.renderManagedFlights(user.type);
                     common.renderAllFlightsTable();
+                    console.log('✅ 航班列表渲染完成');
                 }
             }
         });
@@ -48,13 +51,18 @@ const socketClient = {
                 const index = flightData.flights.findIndex(f => f.id === flight.id);
                 if (index !== -1) {
                     flightData.flights[index] = flight;
+                    console.log('✅ 本地航班数据已更新:', flight.callsign);
+                } else {
+                    console.warn('⚠️ 未找到要更新的航班:', flight.id);
                 }
             }
             if (typeof common !== 'undefined' && typeof auth !== 'undefined') {
                 const user = auth.getCurrentUser();
                 if (user) {
+                    console.log('🔄 重新渲染航班列表...');
                     common.renderManagedFlights(user.type);
                     common.renderAllFlightsTable();
+                    console.log('✅ 航班列表渲染完成');
                 }
             }
         });
@@ -63,12 +71,15 @@ const socketClient = {
             console.log('✈️ 新航班添加:', flight.callsign);
             if (typeof flightData !== 'undefined') {
                 flightData.flights.push(flight);
+                console.log('✅ 本地航班数据已添加:', flight.callsign);
             }
             if (typeof common !== 'undefined' && typeof auth !== 'undefined') {
                 const user = auth.getCurrentUser();
                 if (user) {
+                    console.log('🔄 重新渲染航班列表...');
                     common.renderManagedFlights(user.type);
                     common.renderAllFlightsTable();
+                    console.log('✅ 航班列表渲染完成');
                 }
             }
         });
@@ -79,13 +90,18 @@ const socketClient = {
                 const index = flightData.flights.findIndex(f => f.id === data.flightId);
                 if (index !== -1) {
                     flightData.flights.splice(index, 1);
+                    console.log('✅ 本地航班数据已删除:', data.callsign);
+                } else {
+                    console.warn('⚠️ 未找到要删除的航班:', data.flightId);
                 }
             }
             if (typeof common !== 'undefined' && typeof auth !== 'undefined') {
                 const user = auth.getCurrentUser();
                 if (user) {
+                    console.log('🔄 重新渲染航班列表...');
                     common.renderManagedFlights(user.type);
                     common.renderAllFlightsTable();
+                    console.log('✅ 航班列表渲染完成');
                 }
             }
         });
@@ -101,12 +117,14 @@ const socketClient = {
 
     login(userData) {
         if (this.socket && this.isConnected) {
+            console.log('👤 发送用户登录信息:', userData);
             this.socket.emit('user_login', userData);
         }
     },
 
     transferFlight(flightId, fromControl, toControl, newStatus, newPosition) {
         if (this.socket && this.isConnected) {
+            console.log('🔄 发送航班移交请求:', { flightId, fromControl, toControl, newStatus, newPosition });
             this.socket.emit('flight_transfer', {
                 flightId,
                 fromControl,
@@ -117,14 +135,17 @@ const socketClient = {
             });
             return true;
         }
+        console.warn('⚠️ WebSocket未连接，无法发送航班移交请求');
         return false;
     },
 
     addFlight(flightData) {
         if (this.socket && this.isConnected) {
+            console.log('✈️ 发送添加航班请求:', flightData);
             this.socket.emit('flight_add', flightData);
             return true;
         }
+        console.warn('⚠️ WebSocket未连接，无法发送添加航班请求');
         return false;
     },
 
